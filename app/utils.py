@@ -6,6 +6,7 @@ import pandas as pd
 import PyPDF2
 from flask import current_app
 from app.models import ProductQuote, db
+from sqlalchemy import or_
 
 def parse_excel(file_path):
     """Parse Excel file with Smart Header Detection"""
@@ -237,3 +238,65 @@ def process_uploaded_file(file, user_id, is_admin):
 def get_price_intelligence(query=None, user_is_admin=False):
     """Get price intelligence with min/max grouping by brand"""
     if user_is_admin:
+        base_query = ProductQuote.query
+    else:
+        base_query = ProductQuote.query.filter_by(is_private=False)
+    
+    if query:
+        search_term = f"%{query}%"
+        base_query = base_query.filter(
+            or_(
+                ProductQuote.item_name.ilike(search_term),
+                ProductQuote.cas_no.ilike(search_term),
+                ProductQuote.cat_no.ilike(search_term),
+                ProductQuote.make_brand.ilike(search_term)
+            )
+        )
+    
+    all_quotes = base_query.all()
+    
+    grouped_data = {}
+    for quote in all_quotes:
+        key = f"{quote.item_name}|{quote.make_brand}"
+        if key not in grouped_data:
+            grouped_data[key] = {
+                'item_name': quote.item_name,
+                'make_brand': quote.make_brand,
+                'cas_no': quote.cas_no,
+                'cat_no': quote.cat_no,
+                'prices': [],
+                'specifications': quote.specifications,
+                'count': 0
+            }
+        
+        grouped_data[key]['prices'].append(quote.base_price)
+        grouped_data[key]['count'] += 1
+    
+    result = []
+    for key, data in grouped_data.items():
+        prices = data['prices']
+        result.append({
+            'item_name': data['item_name'],
+            'make_brand': data['make_brand'],
+            'cas_no': data['cas_no'],
+            'cat_no': data['cat_no'],
+            'min_price': min(prices),
+            'max_price': max(prices),
+            'avg_price': sum(prices) / len(prices),
+            'quote_count': data['count'],
+            'specifications': data['specifications']
+        })
+    
+    result.sort(key=lambda x: x['item_name'])
+    return result
+
+def get_motivational_quote():
+    """Return a random motivational quote"""
+    quotes = [
+        "Success is the sum of small efforts repeated day in and day out.",
+        "The only way to do great work is to love what you do.",
+        "Innovation distinguishes between a leader and a follower.",
+        "Don't be afraid to give up the good to go for the great."
+    ]
+    import random
+    return random.choice(quotes)
