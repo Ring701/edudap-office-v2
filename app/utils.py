@@ -8,20 +8,46 @@ from flask import current_app
 from app.models import ProductQuote, db
 
 def parse_excel(file_path):
-    """Parse Excel file and extract product quote data"""
+    """Parse Excel file with Smart Header Detection"""
     quotes = []
     try:
-        df = pd.read_excel(file_path, engine='openpyxl')
+        # Step 1: Read the file WITHOUT headers first to scan it
+        df_raw = pd.read_excel(file_path, header=None, engine='openpyxl')
         
-        # Common column name mappings
+        # Step 2: Hunt for the "Real" Header Row
+        header_index = -1
+        
+        # Keywords to look for in the header row
+        header_keywords = ['item', 'description', 'particulars', 'product', 'cat no', 'price', 'rate', 'amount']
+        
+        for idx, row in df_raw.iterrows():
+            # Convert row to a single string to search for keywords
+            row_text = ' '.join([str(val).lower() for val in row.values if pd.notna(val)])
+            
+            # If we find at least 2 keywords, this is likely the header row
+            match_count = sum(1 for keyword in header_keywords if keyword in row_text)
+            if match_count >= 2:
+                header_index = idx
+                break
+        
+        # Step 3: Reload dataframe using the correct header
+        if header_index != -1:
+            # Set the columns to the found header row
+            df = df_raw.iloc[header_index + 1:].copy()
+            df.columns = df_raw.iloc[header_index]
+        else:
+            # Fallback: Just assume the first row is the header if nothing found
+            df = pd.read_excel(file_path, engine='openpyxl')
+
+        # --- EXISTING MAPPING LOGIC (BUT IMPROVED) ---
         column_mapping = {
-            'item_name': ['Item Name', 'Item', 'Product Name', 'Product', 'Name'],
+            'item_name': ['Item Name', 'Item', 'Product Name', 'Product', 'Name', 'Description', 'Particulars'],
             'cas_no': ['CAS No', 'CAS Number', 'CAS', 'CAS#'],
-            'cat_no': ['Cat No', 'Catalog No', 'Cat Number', 'Product No', 'Product Number', 'Cat#'],
+            'cat_no': ['Cat No', 'Catalog No', 'Cat Number', 'Product No', 'Cat#'],
             'make_brand': ['Make', 'Brand', 'Manufacturer', 'Company'],
-            'base_price': ['Price', 'Base Price', 'Cost', 'Amount'],
+            'base_price': ['Price', 'Base Price', 'Cost', 'Amount', 'Rate', 'Unit Price'],
             'gst_percent': ['GST', 'GST %', 'Tax', 'Tax %'],
-            'specifications': ['Specifications', 'Specs', 'Description', 'Details']
+            'specifications': ['Specifications', 'Specs', 'Details']
         }
         
         # Find actual column names
@@ -32,34 +58,55 @@ def parse_excel(file_path):
                     actual_columns[key] = col
                     break
         
-        # Extract data
+        # Step 4: Extract Data (With "Footer Stopper")
         for idx, row in df.iterrows():
             try:
+                # 1. Get the Item Name
                 item_name = str(row.get(actual_columns.get('item_name', ''), '')).strip()
-                if not item_name or item_name.lower() in ['nan', 'none', '']:
-                    continue
                 
+                # STOP if we hit the "Terms" or "Total" section (Footer detection)
+                stop_words = ['total', 'terms', 'condition', 'amount in words', 'signature', 'sincerely']
+                if any(word in item_name.lower() for word in stop_words):
+                    break
+
+                # SKIP invalid rows (empty or just numbers like "1", "2" from S.No column)
+                if not item_name or item_name.lower() in ['nan', 'none', ''] or item_name.isdigit():
+                    continue
+
+                # 2. Extract Price safely
+                raw_price = row.get(actual_columns.get('base_price', 0), 0)
+                try:
+                    # Remove currency symbols and commas if present
+                    if isinstance(raw_price, str):
+                        raw_price = re.sub(r'[^\d.]', '', raw_price)
+                    base_price = float(raw_price)
+                except:
+                    base_price = 0.0
+
+                # 3. Build the Quote Object
                 quote_data = {
                     'item_name': item_name,
                     'cas_no': str(row.get(actual_columns.get('cas_no', ''), '')).strip() or None,
                     'cat_no': str(row.get(actual_columns.get('cat_no', ''), '')).strip() or None,
                     'make_brand': str(row.get(actual_columns.get('make_brand', ''), 'Unknown')).strip(),
-                    'base_price': float(row.get(actual_columns.get('base_price', 0), 0)) or 0.0,
+                    'base_price': base_price,
                     'gst_percent': float(row.get(actual_columns.get('gst_percent', 18), 18)) or 18.0,
                     'specifications': str(row.get(actual_columns.get('specifications', ''), '')).strip() or None
                 }
                 
+                # Only add if price is valid
                 if quote_data['base_price'] > 0:
                     quotes.append(quote_data)
+
             except Exception as e:
-                current_app.logger.warning(f"Error parsing row {idx}: {str(e)}")
+                # Log error but keep going for other rows
+                current_app.logger.warning(f"Skipping row {idx}: {str(e)}")
                 continue
                 
     except Exception as e:
         current_app.logger.error(f"Error parsing Excel file: {str(e)}")
     
     return quotes
-
 
 def parse_pdf(file_path):
     """Parse PDF file and extract product quote data"""
@@ -71,54 +118,45 @@ def parse_pdf(file_path):
             for page in pdf_reader.pages:
                 text += page.extract_text()
             
-            # Extract structured data using regex patterns
-            # This is a simplified parser - can be enhanced based on actual PDF format
             lines = text.split('\n')
             current_quote = {}
             
             for line in lines:
                 line = line.strip()
-                if not line:
-                    continue
+                if not line: continue
                 
-                # Extract CAS Number (format: CAS-XXXXX-XX-X)
+                # Extract CAS Number
                 cas_match = re.search(r'CAS[:\s-]*(\d{2,7}-\d{2}-\d)', line, re.IGNORECASE)
-                if cas_match:
-                    current_quote['cas_no'] = cas_match.group(1)
+                if cas_match: current_quote['cas_no'] = cas_match.group(1)
                 
                 # Extract Catalog Number
                 cat_match = re.search(r'(?:Cat|Catalog|Product)[\s#:]*([A-Z0-9\-]+)', line, re.IGNORECASE)
-                if cat_match:
-                    current_quote['cat_no'] = cat_match.group(1)
+                if cat_match: current_quote['cat_no'] = cat_match.group(1)
                 
-                # Extract Price (look for currency symbols and numbers)
+                # Extract Price
                 price_match = re.search(r'[₹$€£]?\s*(\d+[.,]\d{2})', line)
                 if price_match:
-                    price_str = price_match.group(1).replace(',', '.')
                     try:
+                        price_str = price_match.group(1).replace(',', '.')
                         current_quote['base_price'] = float(price_str)
-                    except:
-                        pass
+                    except: pass
                 
-                # Extract Brand/Make (usually in uppercase or specific format)
+                # Extract Brand
                 brand_match = re.search(r'(?:Make|Brand|Manufacturer)[:\s]+([A-Z][A-Za-z0-9\s]+)', line, re.IGNORECASE)
-                if brand_match:
-                    current_quote['make_brand'] = brand_match.group(1).strip()
+                if brand_match: current_quote['make_brand'] = brand_match.group(1).strip()
             
-            # If we found any data, create a quote
+            # If we found data, create a generic item entry
             if current_quote and 'base_price' in current_quote:
-                # Try to extract item name (usually first significant line)
                 item_name = lines[0] if lines else "Unknown Item"
                 current_quote['item_name'] = item_name[:200]
                 current_quote['make_brand'] = current_quote.get('make_brand', 'Unknown')
-                current_quote['gst_percent'] = 18.0  # Default
+                current_quote['gst_percent'] = 18.0
                 quotes.append(current_quote)
                 
     except Exception as e:
         current_app.logger.error(f"Error parsing PDF file: {str(e)}")
     
     return quotes
-
 
 def process_uploaded_file(file, user_id, is_admin):
     """Process uploaded file and create/update ProductQuote records"""
@@ -129,7 +167,12 @@ def process_uploaded_file(file, user_id, is_admin):
         # Save file
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         filename = f"{timestamp}_{file.filename}"
-        file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], 'quotes', filename)
+        
+        # Ensure directory exists
+        upload_dir = os.path.join(current_app.config['UPLOAD_FOLDER'], 'quotes')
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        file_path = os.path.join(upload_dir, filename)
         file.save(file_path)
         
         # Parse based on file type
@@ -144,26 +187,26 @@ def process_uploaded_file(file, user_id, is_admin):
             errors.append(f"Unsupported file type: {file_ext}")
             return saved_quotes, errors
         
-        # Process each quote with deduplication logic
+        if not quotes_data:
+            errors.append("No valid product data found in file. Please check table headers.")
+            return saved_quotes, errors
+
+        # Process each quote
         for quote_data in quotes_data:
             try:
-                # Check for existing quote (deduplication)
+                # Deduplication: Check if quote exists
                 existing = ProductQuote.query.filter_by(
                     item_name=quote_data['item_name'],
                     make_brand=quote_data['make_brand'],
-                    cas_no=quote_data.get('cas_no') or '',
-                    cat_no=quote_data.get('cat_no') or '',
                     base_price=quote_data['base_price']
                 ).first()
                 
                 if existing:
-                    # Update existing record
                     existing.specifications = quote_data.get('specifications') or existing.specifications
                     existing.file_url = file_path
                     existing.created_at = datetime.utcnow()
                     saved_quotes.append(existing)
                 else:
-                    # Create new record
                     new_quote = ProductQuote(
                         item_name=quote_data['item_name'],
                         cas_no=quote_data.get('cas_no'),
@@ -174,14 +217,13 @@ def process_uploaded_file(file, user_id, is_admin):
                         specifications=quote_data.get('specifications'),
                         file_url=file_path,
                         uploaded_by_id=user_id,
-                        is_private=is_admin  # Admin uploads are private
+                        is_private=is_admin
                     )
                     db.session.add(new_quote)
                     saved_quotes.append(new_quote)
                     
             except Exception as e:
-                errors.append(f"Error processing quote: {str(e)}")
-                current_app.logger.error(f"Error processing quote: {str(e)}")
+                current_app.logger.error(f"Error saving quote: {str(e)}")
         
         db.session.commit()
         
@@ -192,84 +234,6 @@ def process_uploaded_file(file, user_id, is_admin):
     
     return saved_quotes, errors
 
-
 def get_price_intelligence(query=None, user_is_admin=False):
     """Get price intelligence with min/max grouping by brand"""
-    # Base query
     if user_is_admin:
-        # Admin can see all (private + public)
-        base_query = ProductQuote.query
-    else:
-        # Employees can only see public quotes
-        base_query = ProductQuote.query.filter_by(is_private=False)
-    
-    # Apply search filter
-    if query:
-        search_term = f"%{query}%"
-        base_query = base_query.filter(
-            db.or_(
-                ProductQuote.item_name.ilike(search_term),
-                ProductQuote.cas_no.ilike(search_term),
-                ProductQuote.cat_no.ilike(search_term),
-                ProductQuote.make_brand.ilike(search_term),
-                ProductQuote.specifications.ilike(search_term)
-            )
-        )
-    
-    # Get all matching quotes
-    all_quotes = base_query.all()
-    
-    # Group by Item Name + Brand and calculate min/max
-    grouped_data = {}
-    for quote in all_quotes:
-        key = f"{quote.item_name}|{quote.make_brand}"
-        if key not in grouped_data:
-            grouped_data[key] = {
-                'item_name': quote.item_name,
-                'make_brand': quote.make_brand,
-                'cas_no': quote.cas_no,
-                'cat_no': quote.cat_no,
-                'prices': [],
-                'specifications': quote.specifications,
-                'count': 0
-            }
-        
-        grouped_data[key]['prices'].append(quote.base_price)
-        grouped_data[key]['count'] += 1
-    
-    # Calculate min/max for each group
-    result = []
-    for key, data in grouped_data.items():
-        prices = data['prices']
-        result.append({
-            'item_name': data['item_name'],
-            'make_brand': data['make_brand'],
-            'cas_no': data['cas_no'],
-            'cat_no': data['cat_no'],
-            'min_price': min(prices),
-            'max_price': max(prices),
-            'avg_price': sum(prices) / len(prices),
-            'quote_count': data['count'],
-            'specifications': data['specifications']
-        })
-    
-    # Sort by item name
-    result.sort(key=lambda x: x['item_name'])
-    
-    return result
-
-
-def get_motivational_quote():
-    """Return a random motivational quote"""
-    quotes = [
-        "Success is the sum of small efforts repeated day in and day out.",
-        "The only way to do great work is to love what you do.",
-        "Innovation distinguishes between a leader and a follower.",
-        "Don't be afraid to give up the good to go for the great.",
-        "The future belongs to those who believe in the beauty of their dreams.",
-        "Excellence is not a skill, it's an attitude.",
-        "The harder you work, the luckier you get.",
-        "Dream big and dare to fail."
-    ]
-    import random
-    return random.choice(quotes)
