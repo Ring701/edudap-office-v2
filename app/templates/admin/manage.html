@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h2 class="mb-4" style="color: var(--edu-blue);">
+            <i class="bi bi-gear"></i> Admin Hub
+        </h2>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-primary text-white">
+                <h5><i class="bi bi-check-circle"></i> Approvals</h5>
+            </div>
+            <div class="card-body">
+                <p>Review, Accept, or Reject Leaves and Expenses</p>
+                <a href="{{ url_for('admin.approvals') }}" class="btn btn-primary">
+                    <i class="bi bi-arrow-right"></i> Manage Approvals
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-success text-white">
+                <h5><i class="bi bi-file-earmark-excel"></i> Reporting</h5>
+            </div>
+            <div class="card-body">
+                <p>Download Monthly Excel data for business analysis</p>
+                <a href="{{ url_for('admin.reporting') }}" class="btn btn-success">
+                    <i class="bi bi-arrow-right"></i> View Reports
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-info text-white">
+                <h5><i class="bi bi-geo-alt"></i> Location</h5>
+            </div>
+            <div class="card-body">
+                <p>View real-time GPS locations of all employees who are currently punched in</p>
+                <a href="{{ url_for('admin.location') }}" class="btn btn-info">
+                    <i class="bi bi-arrow-right"></i> View Locations
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-warning text-white">
+                <h5><i class="bi bi-person-badge"></i> Promote</h5>
+            </div>
+            <div class="card-body">
+                <p>Change an Employee's role to Admin status</p>
+                <a href="{{ url_for('admin.promote') }}" class="btn btn-warning">
+                    <i class="bi bi-arrow-right"></i> Promote Employee
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

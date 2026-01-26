@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-receipt"></i> Submit Expense</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data">
+                    {{ form.hidden_tag() }}
+                    <div class="mb-3">
+                        {{ form.amount.label(class="form-label") }}
+                        {{ form.amount(class="form-control", placeholder="0.00") }}
+                        {% if form.amount.errors %}
+                            <div class="text-danger small">{{ form.amount.errors[0] }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        {{ form.category.label(class="form-label") }}
+                        {{ form.category(class="form-select") }}
+                        {% if form.category.errors %}
+                            <div class="text-danger small">{{ form.category.errors[0] }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        {{ form.description.label(class="form-label") }}
+                        {{ form.description(class="form-control", rows="3") }}
+                        {% if form.description.errors %}
+                            <div class="text-danger small">{{ form.description.errors[0] }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        {{ form.bill.label(class="form-label") }}
+                        <span class="text-danger">*</span>
+                        {{ form.bill(class="form-control") }}
+                        {% if form.bill.errors %}
+                            <div class="text-danger small">{{ form.bill.errors[0] }}</div>
+                        {% endif %}
+                        <small class="text-muted">Bill attachment is mandatory (PDF, JPG, PNG)</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Submit Expense</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-clock-history"></i> Expense History</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Amount</th>
+                                <th>Category</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for expense in history %}
+                            <tr>
+                                <td>{{ expense.date.strftime('%d-%m-%Y') }}</td>
+                                <td>₹{{ "%.2f"|format(expense.amount) }}</td>
+                                <td>{{ expense.category }}</td>
+                                <td>
+                                    {% if expense.status == 'Approved' %}
+                                        <span class="badge bg-success">{{ expense.status }}</span>
+                                    {% elif expense.status == 'Rejected' %}
+                                        <span class="badge bg-danger">{{ expense.status }}</span>
+                                    {% else %}
+                                        <span class="badge bg-warning">{{ expense.status }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

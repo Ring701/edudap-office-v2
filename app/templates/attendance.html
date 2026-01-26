@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-clock"></i> Attendance</h5>
+            </div>
+            <div class="card-body text-center">
+                <div id="clock" class="mb-4" style="font-size: 3rem; font-weight: bold; color: var(--edu-blue);">
+                    <span id="time"></span>
+                </div>
+                
+                {% if is_punched_in %}
+                    <div class="alert alert-warning">
+                        <i class="bi bi-check-circle"></i> You are currently PUNCHED IN
+                        <br><small>Punched in at: {{ today_record.punch_in.strftime('%H:%M:%S') }}</small>
+                    </div>
+                    <form method="POST" id="punchForm">
+                        <input type="hidden" name="lat" id="lat">
+                        <input type="hidden" name="lon" id="lon">
+                        <input type="hidden" name="address" id="address">
+                        <button type="submit" class="btn btn-danger btn-lg">
+                            <i class="bi bi-box-arrow-right"></i> Punch OUT
+                        </button>
+                    </form>
+                {% else %}
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> You are currently PUNCHED OUT
+                    </div>
+                    <form method="POST" id="punchForm">
+                        <input type="hidden" name="lat" id="lat">
+                        <input type="hidden" name="lon" id="lon">
+                        <input type="hidden" name="address" id="address">
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="bi bi-box-arrow-in-right"></i> Punch IN
+                        </button>
+                    </form>
+                {% endif %}
+                
+                <p class="text-muted mt-3">
+                    <i class="bi bi-geo-alt"></i> GPS location is mandatory for attendance
+                </p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-clock-history"></i> Attendance History</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Punch In</th>
+                                <th>Punch Out</th>
+                                <th>Duration</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for record in history %}
+                            <tr>
+                                <td>{{ record.date.strftime('%d-%m-%Y') }}</td>
+                                <td>{{ record.punch_in.strftime('%H:%M') }}</td>
+                                <td>{{ record.punch_out.strftime('%H:%M') if record.punch_out else 'N/A' }}</td>
+                                <td>{{ "%.2f"|format(record.duration) }} hrs</td>
+                                <td>
+                                    {% if record.duration >= 9 %}
+                                        <span class="status-green"><i class="bi bi-check-circle"></i> Complete</span>
+                                    {% else %}
+                                        <span class="status-red"><i class="bi bi-x-circle"></i> Incomplete</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Update clock
+    function updateClock() {
+        const now = new Date();
+        document.getElementById('time').textContent = now.toLocaleTimeString();
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+    
+    // Get GPS location
+    document.getElementById('punchForm').addEventListener('submit', function(e) {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    document.getElementById('lat').value = position.coords.latitude;
+                    document.getElementById('lon').value = position.coords.longitude;
+                    
+                    // Reverse geocoding (simplified - you can use a geocoding API)
+                    fetch(`https://api.opencagedata.com/geocode/v1/json?q=${position.coords.latitude}+${position.coords.longitude}&key=YOUR_API_KEY`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.results && data.results[0]) {
+                                document.getElementById('address').value = data.results[0].formatted;
+                            }
+                            document.getElementById('punchForm').submit();
+                        })
+                        .catch(() => {
+                            document.getElementById('address').value = 'Location captured';
+                            document.getElementById('punchForm').submit();
+                        });
+                },
+                function(error) {
+                    alert('Error: Location Services Required to Punch. Please enable GPS.');
+                    e.preventDefault();
+                }
+            );
+        } else {
+            alert('Geolocation is not supported by your browser.');
+            e.preventDefault();
+        }
+    });
+</script>
+{% endblock %}

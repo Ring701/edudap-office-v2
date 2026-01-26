@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h2 class="mb-4" style="color: var(--edu-blue);">
+            <i class="bi bi-geo-alt"></i> Real-Time Employee Locations
+        </h2>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>Currently Active Employees</h5>
+            </div>
+            <div class="card-body">
+                {% if locations %}
+                <div id="map" style="height: 500px; width: 100%;"></div>
+                <div class="table-responsive mt-3">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Employee</th>
+                                <th>Punch In Time</th>
+                                <th>Location</th>
+                                <th>Coordinates</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for loc in locations %}
+                            <tr>
+                                <td>{{ loc.username }}</td>
+                                <td>{{ loc.punch_in_time }}</td>
+                                <td>{{ loc.address or 'N/A' }}</td>
+                                <td>{{ loc.lat }}, {{ loc.lon }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> No employees are currently punched in.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if locations %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script>
+    var map = L.map('map').setView([20.5937, 78.9629], 5);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    
+    {% for loc in locations %}
+    {% if loc.lat and loc.lon %}
+    L.marker([{{ loc.lat }}, {{ loc.lon }}]).addTo(map)
+        .bindPopup('<b>{{ loc.username }}</b><br>Punched in at: {{ loc.punch_in_time }}');
+    {% endif %}
+    {% endfor %}
+</script>
+{% endif %}
+{% endblock %}
