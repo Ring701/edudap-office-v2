@@ -43,7 +43,8 @@ def create_quote():
         else:
             flash('Please add at least one product to the quote.', 'warning')
     
-    return render_template('quote/create.html', search_form=search_form)
+    # THIS IS THE FIX: passing 'date=date' to the template
+    return render_template('quote/create.html', search_form=search_form, date=date)
 
 
 @quote_bp.route('/search-products')
@@ -103,5 +104,5 @@ def print_quote():
         return redirect(url_for('quote.create_quote'))
     
     return render_template('quote/print.html', 
-                         customer=quote_data['customer'],
-                         products=quote_data['products'])
+                          customer=quote_data['customer'],
+                          products=quote_data['products'])
