@@ -30,6 +30,8 @@
             color: var(--edu-blue) !important;
             font-weight: 700;
             font-size: 1.5rem;
+            display: flex;
+            align-items: center;
         }
         
         .nav-link {
@@ -98,8 +100,9 @@
     <nav class="navbar navbar-expand-lg navbar-light">
         <div class="container-fluid">
             <a class="navbar-brand" href="{{ url_for('dashboard.dashboard') }}">
-                <i class="bi bi-building"></i> EduDAP Office
+                <img src="{{ url_for('static', filename='img/logo.png') }}" alt="EduDAP" height="50">
             </a>
+            
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
