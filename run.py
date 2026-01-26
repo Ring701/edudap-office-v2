@@ -1,8 +1,18 @@
-from app import create_app
+from app import create_app, db
 import os
 
 # Gunicorn looks for this exact 'app' variable name
 app = create_app()
+
+# --- TEMPORARY MAGIC RESET BUTTON ---
+# This allows you to reset the DB by visiting the URL
+@app.route('/reset-database-now')
+def reset_database_now():
+    with app.app_context():
+        db.drop_all()
+        db.create_all()
+    return "SUCCESS: Database has been reset. You can now go to /register"
+# ------------------------------------
 
 if __name__ == "__main__":
     # Development mode
