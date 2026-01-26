@@ -13,13 +13,14 @@ def parse_excel(file_path):
     quotes = []
     try:
         # Step 1: Read the file WITHOUT headers first to scan it
-        df_raw = pd.read_excel(file_path, header=None, engine='openpyxl')
+        # We read all columns as strings to avoid confusion
+        df_raw = pd.read_excel(file_path, header=None, engine='openpyxl', dtype=str)
         
         # Step 2: Hunt for the "Real" Header Row
         header_index = -1
         
         # Keywords to look for in the header row
-        header_keywords = ['item', 'description', 'particulars', 'product', 'cat no', 'price', 'rate', 'amount']
+        header_keywords = ['item', 'description', 'particulars', 'product', 'cat no', 'price', 'rate', 'amount', 'qty']
         
         for idx, row in df_raw.iterrows():
             # Convert row to a single string to search for keywords
@@ -40,49 +41,62 @@ def parse_excel(file_path):
             # Fallback: Just assume the first row is the header if nothing found
             df = pd.read_excel(file_path, engine='openpyxl')
 
-        # --- EXISTING MAPPING LOGIC (BUT IMPROVED) ---
+        # --- SMART COLUMN MAPPING ---
         column_mapping = {
             'item_name': ['Item Name', 'Item', 'Product Name', 'Product', 'Name', 'Description', 'Particulars'],
             'cas_no': ['CAS No', 'CAS Number', 'CAS', 'CAS#'],
             'cat_no': ['Cat No', 'Catalog No', 'Cat Number', 'Product No', 'Cat#'],
             'make_brand': ['Make', 'Brand', 'Manufacturer', 'Company'],
             'base_price': ['Price', 'Base Price', 'Cost', 'Amount', 'Rate', 'Unit Price'],
-            'gst_percent': ['GST', 'GST %', 'Tax', 'Tax %'],
-            'specifications': ['Specifications', 'Specs', 'Details']
+            'specifications': ['Specifications', 'Specs', 'Details', 'Pack']
         }
         
         # Find actual column names
         actual_columns = {}
         for key, possible_names in column_mapping.items():
             for col in df.columns:
-                if any(name.lower() in str(col).lower() for name in possible_names):
+                col_str = str(col).strip()
+                if any(name.lower() == col_str.lower() for name in possible_names) or \
+                   any(name.lower() in col_str.lower() for name in possible_names):
                     actual_columns[key] = col
                     break
         
-        # Step 4: Extract Data (With "Footer Stopper")
+        # Step 4: Extract Data (With strict checks)
         for idx, row in df.iterrows():
             try:
                 # 1. Get the Item Name
-                item_name = str(row.get(actual_columns.get('item_name', ''), '')).strip()
+                item_name_col = actual_columns.get('item_name')
+                if not item_name_col:
+                    # If we can't find an "Item Name" column, try the second column (usually Description)
+                    if len(df.columns) > 1:
+                        item_name = str(row.iloc[1])
+                    else:
+                        continue 
+                else:
+                    item_name = str(row.get(item_name_col, '')).strip()
                 
                 # STOP if we hit the "Terms" or "Total" section (Footer detection)
                 stop_words = ['total', 'terms', 'condition', 'amount in words', 'signature', 'sincerely']
                 if any(word in item_name.lower() for word in stop_words):
                     break
 
-                # SKIP invalid rows (empty or just numbers like "1", "2" from S.No column)
-                if not item_name or item_name.lower() in ['nan', 'none', ''] or item_name.isdigit():
+                # --- CRITICAL FIX: IGNORE NUMBERS ---
+                # This fixes the bug where "1", "10", "11" are showing as items
+                if not item_name or item_name.lower() in ['nan', 'none', ''] or item_name.replace('.', '', 1).isdigit():
                     continue
 
                 # 2. Extract Price safely
-                raw_price = row.get(actual_columns.get('base_price', 0), 0)
-                try:
-                    # Remove currency symbols and commas if present
-                    if isinstance(raw_price, str):
-                        raw_price = re.sub(r'[^\d.]', '', raw_price)
-                    base_price = float(raw_price)
-                except:
-                    base_price = 0.0
+                price_col = actual_columns.get('base_price')
+                base_price = 0.0
+                
+                if price_col:
+                    raw_price = str(row.get(price_col, 0))
+                    try:
+                        # Remove currency symbols and commas
+                        clean_price = re.sub(r'[^\d.]', '', raw_price)
+                        base_price = float(clean_price)
+                    except:
+                        base_price = 0.0
 
                 # 3. Build the Quote Object
                 quote_data = {
@@ -91,17 +105,16 @@ def parse_excel(file_path):
                     'cat_no': str(row.get(actual_columns.get('cat_no', ''), '')).strip() or None,
                     'make_brand': str(row.get(actual_columns.get('make_brand', ''), 'Unknown')).strip(),
                     'base_price': base_price,
-                    'gst_percent': float(row.get(actual_columns.get('gst_percent', 18), 18)) or 18.0,
+                    'gst_percent': 18.0,
                     'specifications': str(row.get(actual_columns.get('specifications', ''), '')).strip() or None
                 }
                 
-                # Only add if price is valid
-                if quote_data['base_price'] > 0:
+                # Only add if price is valid and item name is long enough (avoids garbage)
+                if quote_data['base_price'] > 0 and len(item_name) > 2:
                     quotes.append(quote_data)
 
             except Exception as e:
                 # Log error but keep going for other rows
-                current_app.logger.warning(f"Skipping row {idx}: {str(e)}")
                 continue
                 
     except Exception as e:
@@ -126,15 +139,12 @@ def parse_pdf(file_path):
                 line = line.strip()
                 if not line: continue
                 
-                # Extract CAS Number
                 cas_match = re.search(r'CAS[:\s-]*(\d{2,7}-\d{2}-\d)', line, re.IGNORECASE)
                 if cas_match: current_quote['cas_no'] = cas_match.group(1)
                 
-                # Extract Catalog Number
                 cat_match = re.search(r'(?:Cat|Catalog|Product)[\s#:]*([A-Z0-9\-]+)', line, re.IGNORECASE)
                 if cat_match: current_quote['cat_no'] = cat_match.group(1)
                 
-                # Extract Price
                 price_match = re.search(r'[₹$€£]?\s*(\d+[.,]\d{2})', line)
                 if price_match:
                     try:
@@ -142,11 +152,9 @@ def parse_pdf(file_path):
                         current_quote['base_price'] = float(price_str)
                     except: pass
                 
-                # Extract Brand
                 brand_match = re.search(r'(?:Make|Brand|Manufacturer)[:\s]+([A-Z][A-Za-z0-9\s]+)', line, re.IGNORECASE)
                 if brand_match: current_quote['make_brand'] = brand_match.group(1).strip()
             
-            # If we found data, create a generic item entry
             if current_quote and 'base_price' in current_quote:
                 item_name = lines[0] if lines else "Unknown Item"
                 current_quote['item_name'] = item_name[:200]
@@ -165,18 +173,15 @@ def process_uploaded_file(file, user_id, is_admin):
     errors = []
     
     try:
-        # Save file
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         filename = f"{timestamp}_{file.filename}"
         
-        # Ensure directory exists
         upload_dir = os.path.join(current_app.config['UPLOAD_FOLDER'], 'quotes')
         os.makedirs(upload_dir, exist_ok=True)
         
         file_path = os.path.join(upload_dir, filename)
         file.save(file_path)
         
-        # Parse based on file type
         file_ext = os.path.splitext(file.filename)[1].lower()
         quotes_data = []
         
@@ -192,10 +197,8 @@ def process_uploaded_file(file, user_id, is_admin):
             errors.append("No valid product data found in file. Please check table headers.")
             return saved_quotes, errors
 
-        # Process each quote
         for quote_data in quotes_data:
             try:
-                # Deduplication: Check if quote exists
                 existing = ProductQuote.query.filter_by(
                     item_name=quote_data['item_name'],
                     make_brand=quote_data['make_brand'],
@@ -294,9 +297,7 @@ def get_motivational_quote():
     """Return a random motivational quote"""
     quotes = [
         "Success is the sum of small efforts repeated day in and day out.",
-        "The only way to do great work is to love what you do.",
-        "Innovation distinguishes between a leader and a follower.",
-        "Don't be afraid to give up the good to go for the great."
+        "The only way to do great work is to love what you do."
     ]
     import random
     return random.choice(quotes)
