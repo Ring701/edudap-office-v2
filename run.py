@@ -9,20 +9,22 @@ app = create_app()
 def reset_database_now():
     with app.app_context():
         try:
-            # The 'CASCADE' keyword forces the database to delete everything
-            # even if tables are connected to each other.
+            # THIS WAS MISSING: We must drop 'product_quote' to clear the 1, 10, 11 garbage
+            db.session.execute(text('DROP TABLE IF EXISTS product_quote CASCADE'))
             db.session.execute(text('DROP TABLE IF EXISTS quotation CASCADE'))
             db.session.execute(text('DROP TABLE IF EXISTS expense CASCADE'))
             db.session.execute(text('DROP TABLE IF EXISTS attendance CASCADE'))
             db.session.execute(text('DROP TABLE IF EXISTS leave CASCADE'))
             db.session.execute(text('DROP TABLE IF EXISTS task CASCADE'))
+            db.session.execute(text('DROP TABLE IF EXISTS task_chat CASCADE'))
+            db.session.execute(text('DROP TABLE IF EXISTS to_do_alarm CASCADE'))
             db.session.execute(text('DROP TABLE IF EXISTS "user" CASCADE'))
             db.session.execute(text('DROP TABLE IF EXISTS alembic_version CASCADE'))
             db.session.commit()
             
-            # Rebuild all tables with the NEW columns
+            # Rebuild clean tables
             db.create_all()
-            return "SUCCESS: Database has been reset. You can now go to /register"
+            return "SUCCESS: Database has been FULLY reset. The garbage data is gone. Go to /register"
         except Exception as e:
             return f"Error during reset: {str(e)}"
 
