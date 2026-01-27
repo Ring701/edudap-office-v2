@@ -1,224 +1,94 @@
 {% extends "base.html" %}
-
-{% block title %}Dashboard - EduDAP Office{% endblock %}
-
-{% block extra_css %}
-<style>
-    /* Glassmorphism Styles */
-    .glass-card {
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
-        border-radius: 16px;
-    }
-
-    /* Premium Search Bar */
-    .search-input {
-        border-radius: 50px;
-        border: 2px solid #e0e0e0;
-        padding: 15px 25px;
-        transition: all 0.3s ease;
-        font-size: 1.1rem;
-    }
-    
-    .search-input:focus {
-        border-color: var(--edu-blue);
-        box-shadow: 0 4px 15px rgba(0, 64, 133, 0.15);
-    }
-
-    /* Table Styling */
-    .table-modern {
-        margin-bottom: 0;
-    }
-    .table-modern thead th {
-        background-color: #f8f9fa;
-        color: #6c757d;
-        font-weight: 600;
-        border-bottom: 2px solid #e9ecef;
-        text-transform: uppercase;
-        font-size: 0.85rem;
-        letter-spacing: 0.5px;
-    }
-    .table-modern tbody td {
-        vertical-align: middle;
-        border-bottom: 1px solid #f0f0f0;
-    }
-
-    /* Mobile Card Grid */
-    .product-card {
-        transition: transform 0.2s;
-    }
-    .product-card:active {
-        transform: scale(0.98);
-    }
-</style>
-{% endblock %}
+{% block title %}Dashboard{% endblock %}
 
 {% block content %}
-<div class="container-fluid px-lg-5">
-    
-    <div class="row mb-5 align-items-center">
+<div class="container-fluid px-4">
+    <div class="row mb-4 align-items-center">
         <div class="col-md-8">
-            <h2 class="fw-bold" style="color: var(--edu-blue);">Smart Price Intelligence</h2>
-            <p class="text-muted mb-0">Search products, compare prices, and view original quotes.</p>
+            <h2 class="text-primary fw-bold">Price Intelligence</h2>
         </div>
-        <div class="col-md-4 text-md-end mt-3 mt-md-0">
-            <button class="btn btn-success btn-lg rounded-pill shadow-sm px-4" data-bs-toggle="modal" data-bs-target="#uploadModal">
-                <i class="bi bi-cloud-upload me-2"></i> Upload Quote
+        <div class="col-md-4 text-end">
+            <button class="btn btn-success rounded-pill" data-bs-toggle="modal" data-bs-target="#uploadModal">
+                <i class="bi bi-cloud-upload"></i> Upload
             </button>
         </div>
     </div>
 
-    <div class="row justify-content-center mb-5">
-        <div class="col-lg-8 col-md-10">
-            <form action="{{ url_for('dashboard.dashboard') }}" method="GET" class="position-relative">
-                <input type="text" name="query" class="form-control search-input" 
-                       placeholder="Search by Item Name, CAS No, Brand, or Catalog No..." 
-                       value="{{ query }}" autocomplete="off">
-                <button type="submit" class="btn btn-primary position-absolute top-50 end-0 translate-middle-y me-2 rounded-circle" 
-                        style="width: 45px; height: 45px; display: flex; align-items: center; justify-content: center;">
-                    <i class="bi bi-search"></i>
-                </button>
+    <div class="row justify-content-center mb-4">
+        <div class="col-md-8">
+            <form action="{{ url_for('dashboard.dashboard') }}" method="GET">
+                <div class="input-group">
+                    <input type="text" name="query" class="form-control form-control-lg" placeholder="Search products..." value="{{ query }}">
+                    <button class="btn btn-primary" type="submit"><i class="bi bi-search"></i></button>
+                </div>
             </form>
         </div>
     </div>
 
     {% if price_data %}
-        
-        <div class="d-none d-md-block">
-            <div class="card glass-card border-0 overflow-hidden">
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover table-modern">
-                            <thead>
-                                <tr>
-                                    <th class="ps-4">Item Name</th>
-                                    <th>Brand</th>
-                                    <th>Lowest</th>
-                                    <th>Highest</th>
-                                    <th>Avg Price</th>
-                                    <th>Quotes</th>
-                                    <th class="text-center">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for item in price_data %}
-                                <tr>
-                                    <td class="ps-4">
-                                        <div class="fw-bold text-dark">{{ item.item_name }}</div>
-                                        <div class="small text-muted">{{ item.cas_no or item.cat_no or '' }}</div>
-                                    </td>
-                                    <td><span class="badge bg-light text-dark border">{{ item.make_brand }}</span></td>
-                                    <td class="text-success fw-bold">₹{{ "%.2f"|format(item.min_price) }}</td>
-                                    <td class="text-danger">₹{{ "%.2f"|format(item.max_price) }}</td>
-                                    <td>₹{{ "%.2f"|format(item.avg_price) }}</td>
-                                    <td><span class="badge bg-info bg-opacity-10 text-info">{{ item.quote_count }}</span></td>
-                                    <td class="text-center">
-                                        {% if item.file_url %}
-                                        <a href="{{ url_for('dashboard.download_file', filename=item.file_url) }}" 
-                                           target="_blank" 
-                                           class="btn btn-sm btn-outline-primary rounded-pill px-3">
-                                            <i class="bi bi-eye me-1"></i> View
-                                        </a>
-                                        {% else %}
-                                        <span class="text-muted small">-</span>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="d-md-none">
-            <div class="row g-3">
-                {% for item in price_data %}
-                <div class="col-12">
-                    <div class="card glass-card border-0 product-card">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                <h6 class="fw-bold text-primary mb-0 pe-2">{{ item.item_name }}</h6>
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th class="ps-4">Item Name</th>
+                            <th>Brand</th>
+                            <th>Min Price</th>
+                            <th>Max Price</th>
+                            <th>Avg Price</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in price_data %}
+                        <tr>
+                            <td class="ps-4 fw-bold">{{ item.item_name }}</td>
+                            <td>{{ item.make_brand }}</td>
+                            <td class="text-success">₹{{ "%.0f"|format(item.min_price) }}</td>
+                            <td class="text-danger">₹{{ "%.0f"|format(item.max_price) }}</td>
+                            <td>₹{{ "%.0f"|format(item.avg_price) }}</td>
+                            <td>
                                 {% if item.file_url %}
-                                <a href="{{ url_for('dashboard.download_file', filename=item.file_url) }}" 
-                                   target="_blank" class="text-primary">
-                                    <i class="bi bi-eye fs-5"></i>
+                                <a href="{{ url_for('dashboard.download_file', filename=item.file_url) }}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill">
+                                    <i class="bi bi-eye"></i> View
                                 </a>
+                                {% else %}
+                                <span class="text-muted">-</span>
                                 {% endif %}
-                            </div>
-                            
-                            <div class="d-flex justify-content-between small text-muted mb-3">
-                                <span>{{ item.make_brand }}</span>
-                                <span>{{ item.cas_no or item.cat_no or '' }}</span>
-                            </div>
-                            
-                            <div class="bg-light rounded p-2 d-flex justify-content-between align-items-center">
-                                <div>
-                                    <span class="d-block text-success small fw-bold">Low: ₹{{ "%.0f"|format(item.min_price) }}</span>
-                                    <span class="d-block text-danger small">High: ₹{{ "%.0f"|format(item.max_price) }}</span>
-                                </div>
-                                <div class="text-end">
-                                    <span class="d-block small text-muted">Avg Price</span>
-                                    <span class="fw-bold text-dark">₹{{ "%.0f"|format(item.avg_price) }}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                {% endfor %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
-
-    {% elif query %}
-        <div class="text-center mt-5">
-            <div class="mb-3 text-muted opacity-50">
-                <i class="bi bi-search display-1"></i>
-            </div>
-            <h4 class="text-muted">No products found</h4>
-            <p class="text-muted">Try adjusting your search for "{{ query }}"</p>
-        </div>
-    {% else %}
-        <div class="row justify-content-center mt-5">
-            <div class="col-md-6">
-                <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, var(--edu-blue) 0%, var(--edu-green) 100%); color: white; border-radius: 16px;">
-                    <div class="card-body text-center p-5">
-                        <i class="bi bi-quote display-4 opacity-50"></i>
-                        <p class="fs-5 mt-3 mb-0 fst-italic">"{{ motivational_quote }}"</p>
-                    </div>
-                </div>
-            </div>
-        </div>
+    </div>
     {% endif %}
+    
+    <div class="row mt-5 justify-content-center">
+        <div class="col-md-6 text-center">
+            <blockquote class="blockquote">
+                <p class="mb-0">"{{ motivational_quote }}"</p>
+            </blockquote>
+        </div>
+    </div>
 </div>
 
-<div class="modal fade" id="uploadModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header border-0 bg-light">
-                <h5 class="modal-title fw-bold text-primary">Upload New Quote</h5>
+<div class="modal fade" id="uploadModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Upload Quote</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body p-4">
+            <div class="modal-body">
                 <form action="{{ url_for('dashboard.upload_quote') }}" method="POST" enctype="multipart/form-data">
                     {{ upload_form.hidden_tag() }}
-                    
-                    <div class="mb-4 text-center">
-                        <i class="bi bi-cloud-arrow-up display-1 text-muted opacity-25"></i>
-                        <p class="small text-muted mt-2">Supports .xlsx, .xls, .pdf</p>
-                    </div>
-
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Select File</label>
-                        {{ upload_form.file(class="form-control form-control-lg") }}
+                        {{ upload_form.file(class="form-control") }}
                     </div>
-                    
-                    <button type="submit" class="btn btn-success w-100 py-2 fw-bold rounded-pill">
-                        Process File
-                    </button>
+                    <button type="submit" class="btn btn-success w-100">Upload</button>
                 </form>
             </div>
         </div>
