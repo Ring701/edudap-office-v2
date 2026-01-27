@@ -9,7 +9,7 @@ app = create_app()
 def reset_database_now():
     with app.app_context():
         try:
-            # THIS WAS MISSING: We must drop 'product_quote' to clear the 1, 10, 11 garbage
+            # FIX: Added 'product_quote' to the delete list
             db.session.execute(text('DROP TABLE IF EXISTS product_quote CASCADE'))
             db.session.execute(text('DROP TABLE IF EXISTS quotation CASCADE'))
             db.session.execute(text('DROP TABLE IF EXISTS expense CASCADE'))
@@ -24,7 +24,7 @@ def reset_database_now():
             
             # Rebuild clean tables
             db.create_all()
-            return "SUCCESS: Database has been FULLY reset. The garbage data is gone. Go to /register"
+            return "SUCCESS: Database FULLY reset. Garbage data is gone. Go to /register"
         except Exception as e:
             return f"Error during reset: {str(e)}"
 
