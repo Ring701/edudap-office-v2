@@ -1,237 +1,132 @@
-"""Utility functions for PDF/Excel parsing and price intelligence"""
+"""Utility functions"""
 import os
 import re
-from datetime import datetime
 import pandas as pd
-import PyPDF2
 from flask import current_app
 from app.models import ProductQuote, db
 from sqlalchemy import or_
+from datetime import datetime
 
 def parse_excel(file_path):
-    """Parse Excel file with Nuclear Filtering for Garbage Data"""
     quotes = []
     try:
-        # Read file as string first to analyze structure without forcing headers
+        # Read without headers first to find the real start
         df_raw = pd.read_excel(file_path, header=None, engine='openpyxl', dtype=str)
         
-        # 1. Dynamic Header Detection
-        # We scan the first 20 rows to find where the actual table starts
         header_index = -1
-        header_keywords = ['item', 'description', 'particulars', 'product', 'name', 'material']
+        keywords = ['item', 'description', 'product', 'particulars']
         
         for idx, row in df_raw.head(20).iterrows():
-            row_text = ' '.join([str(v).lower() for v in row.values if pd.notna(v)])
-            # If row contains at least one strong keyword
-            if any(k in row_text for k in header_keywords):
+            text = ' '.join([str(v).lower() for v in row.values if pd.notna(v)])
+            if any(k in text for k in keywords):
                 header_index = idx
                 break
         
         if header_index != -1:
-            # Reload dataframe using the found header row
             df = df_raw.iloc[header_index + 1:].copy()
             df.columns = df_raw.iloc[header_index]
         else:
-            # Fallback: Assume first row
             df = pd.read_excel(file_path, engine='openpyxl')
 
-        # 2. Smart Column Mapping
+        # Find columns
         def get_col(candidates):
             for col in df.columns:
-                col_str = str(col).lower().strip()
-                if any(c in col_str for c in candidates):
+                if any(c in str(col).lower() for c in candidates):
                     return col
             return None
 
-        col_item = get_col(['item', 'description', 'product', 'particulars', 'name'])
-        col_price = get_col(['price', 'rate', 'amount', 'cost', 'unit price'])
-        col_make = get_col(['make', 'brand', 'manufacturer'])
-        col_cas = get_col(['cas', 'cas no'])
-        col_cat = get_col(['cat', 'catalog', 'cat no'])
-        col_spec = get_col(['spec', 'pack', 'specification'])
+        col_item = get_col(['item', 'description', 'product', 'particulars'])
+        col_price = get_col(['price', 'rate', 'amount'])
+        col_make = get_col(['make', 'brand'])
         
-        # If we can't find an item column, we can't process
-        if not col_item:
-            return []
+        if not col_item: return []
 
-        # 3. Extract Data with NUCLEAR FILTER
         for idx, row in df.iterrows():
             try:
-                # Get Item Name
                 item_name = str(row.get(col_item, '')).strip()
                 
-                # --- NUCLEAR FILTER START ---
-                # 1. Ignore empty or NaN
-                if not item_name or item_name.lower() in ['nan', 'none', 'nat']:
-                    continue
+                # --- STRICT FILTER ---
+                if not item_name or item_name.lower() in ['nan', 'none']: continue
+                if item_name.replace('.', '').isdigit(): continue  # Skips "1", "10", "11"
+                if len(item_name) < 2: continue
+                if 'total' in item_name.lower(): break
                 
-                # 2. Ignore pure numbers (e.g., "1", "10", "100")
-                if item_name.isdigit():
-                    continue
-                    
-                # 3. Ignore Serial Number patterns (e.g., "1.", "1.0", "10)")
-                if re.match(r'^\d+[.)]?$', item_name):
-                    continue
-                
-                # 4. Ignore tiny strings (likely noise)
-                if len(item_name) < 3:
-                    continue
-                
-                # 5. Stop words that indicate footer
-                if any(x in item_name.lower() for x in ['total', 'terms', 'signature', 'amount in words', 'page']):
-                    break
-                # --- NUCLEAR FILTER END ---
-
-                # Get Price
                 raw_price = str(row.get(col_price, 0)) if col_price else '0'
-                # Clean price: remove currency symbols, commas, keep digits and dot
                 clean_price = re.sub(r'[^\d.]', '', raw_price)
-                try: 
-                    price = float(clean_price)
-                except: 
-                    price = 0.0
+                try: price = float(clean_price)
+                except: price = 0.0
 
                 if price > 0:
                     quotes.append({
                         'item_name': item_name,
                         'base_price': price,
                         'make_brand': str(row.get(col_make, 'Unknown')).strip() if col_make else 'Unknown',
-                        'cas_no': str(row.get(col_cas, '')).strip() if col_cas else None,
-                        'cat_no': str(row.get(col_cat, '')).strip() if col_cat else None,
-                        'specifications': str(row.get(col_spec, '')).strip() if col_spec else None
+                        'specifications': None, 'cas_no': None, 'cat_no': None
                     })
-            except Exception:
-                continue
-            
+            except: continue
     except Exception as e:
-        current_app.logger.error(f"Excel Parsing Error: {str(e)}")
-    
+        current_app.logger.error(f"Error: {e}")
     return quotes
 
-def parse_pdf(file_path):
-    # Placeholder for future PDF logic
-    return [] 
+def parse_pdf(file_path): return []
 
 def process_uploaded_file(file, user_id, is_admin):
-    """Process uploaded file and save to DB"""
-    saved_quotes = []
-    errors = []
-    
+    saved = []
+    errs = []
     try:
-        # Save File
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         filename = f"{timestamp}_{file.filename}"
+        path = os.path.join(current_app.config['UPLOAD_FOLDER'], 'quotes', filename)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        file.save(path)
         
-        # Ensure upload directory exists
-        upload_dir = os.path.join(current_app.config['UPLOAD_FOLDER'], 'quotes')
-        os.makedirs(upload_dir, exist_ok=True)
+        data = parse_excel(path) if file.filename.endswith(('.xls','.xlsx')) else []
         
-        file_path = os.path.join(upload_dir, filename)
-        file.save(file_path)
-        
-        # Parse
-        if file.filename.lower().endswith(('.xls', '.xlsx')):
-            data = parse_excel(file_path)
-        else:
-            # Fallback/Placeholder for PDF
-            data = parse_pdf(file_path)
-        
-        if not data:
-            return [], ["No valid product data found. Please check your file columns."]
+        if not data: return [], ["No valid data found."]
 
-        # Save to Database
         for item in data:
-            try:
-                new_q = ProductQuote(
-                    item_name=item['item_name'],
-                    base_price=item['base_price'],
-                    make_brand=item['make_brand'],
-                    cas_no=item['cas_no'],
-                    cat_no=item['cat_no'],
-                    specifications=item['specifications'],
-                    file_url=filename,  # CRITICAL: Saving filename for download
-                    uploaded_by_id=user_id,
-                    is_private=is_admin
-                )
-                db.session.add(new_q)
-                saved_quotes.append(new_q)
-            except Exception:
-                continue
-        
+            new_q = ProductQuote(
+                item_name=item['item_name'],
+                base_price=item['base_price'],
+                make_brand=item['make_brand'],
+                file_url=filename, # Saves filename
+                uploaded_by_id=user_id,
+                is_private=is_admin
+            )
+            db.session.add(new_q)
+            saved.append(new_q)
         db.session.commit()
-        
     except Exception as e:
         db.session.rollback()
-        errors.append(f"Processing Error: {str(e)}")
-        
-    return saved_quotes, errors
+        errs.append(str(e))
+    return saved, errs
 
 def get_price_intelligence(query=None, user_is_admin=False):
-    """Get aggregated price data for dashboard"""
-    # Base Query
     q = ProductQuote.query
-    if not user_is_admin: 
-        q = q.filter_by(is_private=False)
-    
-    # Search Filter
+    if not user_is_admin: q = q.filter_by(is_private=False)
     if query:
-        term = f"%{query}%"
-        q = q.filter(or_(
-            ProductQuote.item_name.ilike(term), 
-            ProductQuote.make_brand.ilike(term),
-            ProductQuote.cas_no.ilike(term),
-            ProductQuote.cat_no.ilike(term),
-            ProductQuote.specifications.ilike(term)
-        ))
+        q = q.filter(or_(ProductQuote.item_name.ilike(f"%{query}%"), ProductQuote.make_brand.ilike(f"%{query}%")))
     
-    # Fetch all records
-    all_quotes = q.all()
-    
-    # Grouping Logic
     data = {}
-    for row in all_quotes:
-        # Group by Item Name + Brand
+    for row in q.all():
         key = f"{row.item_name}|{row.make_brand}"
-        
         if key not in data:
-            data[key] = {
-                'item_name': row.item_name, 
-                'make_brand': row.make_brand, 
-                'cas_no': row.cas_no, 
-                'cat_no': row.cat_no,
-                'specifications': row.specifications,
-                'prices': [], 
-                'count': 0, 
-                'files': set() # Use set to avoid duplicate filenames
-            }
-        
+            data[key] = {'item_name': row.item_name, 'make_brand': row.make_brand, 'prices': [], 'files': []}
         data[key]['prices'].append(row.base_price)
-        data[key]['count'] += 1
-        if row.file_url: 
-            data[key]['files'].add(row.file_url)
+        if row.file_url: data[key]['files'].append(row.file_url)
         
-    # Format Results
-    results = []
+    res = []
     for k, v in data.items():
-        # Pick the most recent file if multiple exist
-        file_link = list(v['files'])[0] if v['files'] else None
-        
-        results.append({
+        res.append({
             'item_name': v['item_name'],
             'make_brand': v['make_brand'],
-            'cas_no': v['cas_no'], 
-            'cat_no': v['cat_no'],
-            'specifications': v['specifications'],
             'min_price': min(v['prices']),
             'max_price': max(v['prices']),
-            'avg_price': sum(v['prices']) / len(v['prices']),
-            'quote_count': v['count'],
-            'file_url': file_link # This is what the UI needs for the button
+            'avg_price': sum(v['prices'])/len(v['prices']),
+            'quote_count': len(v['prices']),
+            'file_url': v['files'][0] if v['files'] else None # Sends file to template
         })
-    
-    # Sort alphabetically
-    results.sort(key=lambda x: x['item_name'])
-    return results
+    return res
 
 def get_motivational_quote():
-    return "Innovation distinguishes between a leader and a follower."
+    return "Great things never come from comfort zones."
