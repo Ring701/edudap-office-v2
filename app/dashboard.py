@@ -18,7 +18,8 @@ def dashboard():
     price_data = get_price_intelligence(query=query, user_is_admin=current_user.is_admin)
     quote = get_motivational_quote()
     
-    return render_template('dashboard.html',
+    # FIX: Explicitly points to dashboard/index.html
+    return render_template('dashboard/index.html',
                          search_form=search_form,
                          upload_form=upload_form,
                          price_data=price_data,
@@ -36,17 +37,17 @@ def upload_quote():
         if saved:
             flash(f'Success! {len(saved)} products added.', 'success')
         if errors:
+            # Show first error only to avoid clutter
             flash(f'Note: {errors[0]}', 'warning')
     else:
         flash('Invalid file.', 'danger')
     return redirect(url_for('dashboard.dashboard'))
 
-# --- FIX: Added Missing Download Route ---
+# FIX: Added Missing Download Route for the "View" button
 @dashboard_bp.route('/download/<path:filename>')
 @login_required
 def download_file(filename):
     try:
-        # Securely serve the file from the quotes folder
         upload_dir = os.path.join(current_app.config['UPLOAD_FOLDER'], 'quotes')
         return send_from_directory(upload_dir, filename, as_attachment=False)
     except Exception as e:
@@ -56,12 +57,5 @@ def download_file(filename):
 @dashboard_bp.route('/search', methods=['GET', 'POST'])
 @login_required
 def search():
-    form = SearchForm()
-    query = request.args.get('query', '').strip() or request.form.get('query', '').strip()
-    
-    # AJAX support
-    if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        price_data = get_price_intelligence(query=query, user_is_admin=current_user.is_admin)
-        return jsonify({'success': True, 'data': price_data})
-    
+    query = request.args.get('query', '').strip()
     return redirect(url_for('dashboard.dashboard', query=query))
