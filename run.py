@@ -9,7 +9,8 @@ app = create_app()
 def reset_database_now():
     with app.app_context():
         try:
-            # FIX: Added 'product_quote' to the delete list
+            # FIX: Added 'product_quote' to the delete list.
+            # This is critical to removing the "1, 10, 11" garbage data.
             db.session.execute(text('DROP TABLE IF EXISTS product_quote CASCADE'))
             db.session.execute(text('DROP TABLE IF EXISTS quotation CASCADE'))
             db.session.execute(text('DROP TABLE IF EXISTS expense CASCADE'))
