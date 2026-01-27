@@ -1,5 +1,5 @@
 """Dashboard Blueprint"""
-from flask import Blueprint, render_template, request, flash, redirect, url_for, send_from_directory, current_app
+from flask import Blueprint, render_template, request, flash, redirect, url_for, jsonify, send_from_directory, current_app
 from flask_login import login_required, current_user
 from app.forms import SearchForm, QuoteUploadForm
 from app.utils import process_uploaded_file, get_price_intelligence, get_motivational_quote
@@ -11,7 +11,6 @@ dashboard_bp = Blueprint('dashboard', __name__)
 @dashboard_bp.route('/dashboard')
 @login_required
 def dashboard():
-    """Main dashboard"""
     search_form = SearchForm()
     upload_form = QuoteUploadForm()
     
@@ -19,8 +18,7 @@ def dashboard():
     price_data = get_price_intelligence(query=query, user_is_admin=current_user.is_admin)
     quote = get_motivational_quote()
     
-    # Renders the modern UI
-    return render_template('dashboard/index.html',
+    return render_template('dashboard.html',
                          search_form=search_form,
                          upload_form=upload_form,
                          price_data=price_data,
@@ -43,19 +41,27 @@ def upload_quote():
         flash('Invalid file.', 'danger')
     return redirect(url_for('dashboard.dashboard'))
 
-# --- THIS IS THE MISSING DOWNLOAD ROUTE ---
-@dashboard_bp.route('/download/<filename>')
+# --- FIX: Added Missing Download Route ---
+@dashboard_bp.route('/download/<path:filename>')
 @login_required
 def download_file(filename):
     try:
-        uploads = os.path.join(current_app.config['UPLOAD_FOLDER'], 'quotes')
-        return send_from_directory(uploads, filename, as_attachment=False)
+        # Securely serve the file from the quotes folder
+        upload_dir = os.path.join(current_app.config['UPLOAD_FOLDER'], 'quotes')
+        return send_from_directory(upload_dir, filename, as_attachment=False)
     except Exception as e:
         flash('File not found.', 'danger')
         return redirect(url_for('dashboard.dashboard'))
 
-@dashboard_bp.route('/search')
+@dashboard_bp.route('/search', methods=['GET', 'POST'])
 @login_required
 def search():
-    query = request.args.get('query', '').strip()
+    form = SearchForm()
+    query = request.args.get('query', '').strip() or request.form.get('query', '').strip()
+    
+    # AJAX support
+    if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        price_data = get_price_intelligence(query=query, user_is_admin=current_user.is_admin)
+        return jsonify({'success': True, 'data': price_data})
+    
     return redirect(url_for('dashboard.dashboard', query=query))
