@@ -1,169 +1,230 @@
-# EduDAP Office v2 - CRM System
+# EduDAP Quotation System
 
-**Version 1.0 (Intelligent Price Tracking)**
+A intelligent quotation generation system with A/B/C pricing tiers, powered by Gemini AI for web-based price estimation.
 
-A comprehensive Customer Relationship Management (CRM) system with smart search, price intelligence, attendance tracking, leave management, expense claims, and task management.
+## 🚀 Features
 
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com)
+- **Knowledge Base Indexing**: Index your Price Lists and Past Quotations from Excel files
+- **A/B/C Pricing Tiers**:
+  - **Tier A**: Past quotations (customer-specific historical pricing)
+  - **Tier B**: Price list (MRP with customer-type-based discounts)
+  - **Tier C**: Gemini web search (grounded AI pricing with citations)
+- **Smart Quotation Generation**: Automatic fallback through pricing tiers
+- **Print-Ready Output**: Professional quotation format with PDF export
+- **Citation Tracking**: Source URLs for web-sourced prices
 
-## 🎨 Color Theme
+## 📋 Requirements
 
-- **Deep Professional Blue**: `#004085`
-- **Scientific Green**: `#4E7D5B`
+- Node.js 18+ 
+- Chrome or Edge browser (for folder access)
+- Google Gemini API key
 
-## ✨ Features
+## 🔧 Setup Instructions
 
-### 1. Registration & Login System
-- Automatic role assignment (First user = Admin, rest = Employees)
-- Admin promotion feature
-- Secure password hashing
+### 1. Clone or Download the Project
 
-### 2. Smart Search & Price Intelligence (Dashboard)
-- Deep search indexing across PDFs/Excels
-- Extracts: Item Name, CAS No, Cat No, Make/Brand, Specifications, Pricing
-- Price Logic: Groups by brand, shows Min/Max prices
-- Deduplication: Updates existing records instead of creating duplicates
-- Visibility Rules: Employee uploads (public), Admin uploads (private)
-- Motivational quote display
+```bash
+git clone https://github.com/Ring701/edudap-office-v2.git
+cd edudap-office-v2
+```
 
-### 3. Employee Features
-- **Attendance**: GPS-enabled punch in/out with visual indicators (< 9hrs = Red, ≥ 9hrs = Green)
-- **Leave**: Request form with date and reason
-- **Expenses**: Submit with mandatory bill attachment
-- **Assigned Tasks**: View tasks, deadlines, and live chat with admin
-- **To-Do List**: Personal tasks with priority levels and alarms
+### 2. Install Dependencies
 
-### 4. Admin Features
-- **Dashboard**: Access to private and public data search
-- **Assign**: Create tasks for employees, set deadlines, manage chat
-- **To-Do List**: Personal tasks with alarms
-- **Manage Hub**:
-  - **Approvals**: Review, Accept, or Reject Leaves and Expenses
-  - **Reporting**: Download Monthly Excel data
-  - **Location**: View real-time GPS locations of punched-in employees
-  - **Promote**: Change Employee role to Admin
+This project uses ES modules and requires Node.js 18+.
 
-## 🚀 Quick Start
+```bash
+npm install
+```
 
-### Local Development
+### 3. Set Up Environment Variables
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/YOUR_USERNAME/edudap-office-v2.git
-   cd edudap-office-v2
-   ```
+Copy `.env.example` to `.env`:
 
-2. **Create virtual environment**
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
+```bash
+cp .env.example .env
+```
 
-3. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
+Edit `.env` and add your Gemini API key:
 
-4. **Configure environment**
-   ```bash
-   cp .env.example .env
-   # Edit .env and set SECRET_KEY
-   # Generate: python -c "import secrets; print(secrets.token_hex(32))"
-   ```
+```env
+GOOGLE_API_KEY=your_actual_gemini_api_key_here
+PORT=3000
+```
 
-5. **Run the application**
-   ```bash
-   python run.py
-   ```
+**Get your Gemini API key**: https://makersuite.google.com/app/apikey
 
-6. **Access**: `http://localhost:5000`
+### 4. Run Locally
 
-### Deploy to Render
+```bash
+npm run dev
+```
 
-See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed deployment instructions.
+The server will start at `http://localhost:3000`
 
-**Quick Deploy:**
-1. Push code to GitHub
-2. Connect repository to Render
-3. Set environment variables
-4. Deploy!
+Open your browser and navigate to:
+- **Quotation System**: http://localhost:3000/index.html
+
+## 📖 How to Use
+
+### Step 1: Select Knowledge Base Folder
+
+1. Click "📁 Select Folder"
+2. Choose a folder containing your Excel files (Price Lists and Past Quotations)
+3. The system will index all `.xlsx` and `.xls` files
+
+**Supported Excel Formats:**
+
+**Price Lists** (detected by filename containing "price/rate/pricelist" or columns "price/mrp"):
+```
+Item | Price | Discount | MRP
+```
+
+**Past Quotations** (detected by filename containing "quote/quotation" or column "customer"):
+```
+Customer | Item | Price | Discount
+```
+
+### Step 2: Configure Gemini (Optional)
+
+- **Serverless Endpoint**: Default is `/api/gemini-price` (already configured)
+- **API Key**: Can be set in `.env` or entered in the UI
+- **Suggested URLs**: Comma-separated URLs to prioritize in Gemini's search
+
+### Step 3: Fill Quotation Header
+
+- **Quotation No**: e.g., `QTN/EDP/2025-26/0155`
+- **Date**: Auto-filled with today's date
+- **To (Recipient)**: Customer name
+- **University/Organization**: Customer organization
+- **Customer Type**: University/Company/Govt/PSU (affects discount rates)
+
+### Step 4: Upload Requirements Excel
+
+Upload an Excel file with the following columns (case-insensitive):
+
+| Column | Description |
+|--------|-------------|
+| Customer | Customer name (optional, matches with history) |
+| Item | Product/item name (required) |
+| Quantity | Order quantity (defaults to 1) |
+| Specification | Item specs (optional) |
+| Unit | Unit of measure (optional) |
+| Make | Brand/manufacturer (optional) |
+| Cat no | Catalog number (optional) |
+
+**Example Requirements Excel:**
+```
+Customer | Item | Quantity | Specification | Unit | Make | Cat no
+IIT Bombay | Pipette 10ml | 50 | Class A | pcs | Eppendorf | 12345
+Tropical Genetics | PCR Tubes | 1000 | 0.2ml | pcs | Corning | 67890
+```
+
+### Step 5: Generate Quotation
+
+1. Click "⚡ Generate"
+2. The system will:
+   - Check past quotations for each item (Tier A)
+   - Fall back to price list (Tier B)
+   - Finally use Gemini web search (Tier C)
+3. Review the generated quotation
+4. Click "🖨️ Print / Save PDF" to export
+
+## 🌐 Deploy to Vercel
+
+### Option 1: Vercel CLI
+
+```bash
+# Install Vercel CLI
+npm i -g vercel
+
+# Login to Vercel
+vercel login
+
+# Deploy
+vercel
+
+# Set environment variable in Vercel dashboard
+# Settings > Environment Variables
+# GOOGLE_API_KEY = your_api_key
+```
+
+### Option 2: Vercel Dashboard
+
+1. Push your code to GitHub
+2. Go to https://vercel.com/new
+3. Import your repository
+4. Vercel will detect the project automatically
+5. Add `GOOGLE_API_KEY` in Environment Variables
+6. Click "Deploy"
+
+**Important**: After deployment, your quotation system will be available at:
+```
+https://your-project-name.vercel.app/index.html
+```
 
 ## 📁 Project Structure
 
 ```
 edudap-office-v2/
-├── app/
-│   ├── __init__.py          # Application factory
-│   ├── models.py            # Database models
-│   ├── forms.py             # WTForms definitions
-│   ├── extensions.py        # Flask extensions
-│   ├── utils.py             # Utility functions (PDF/Excel parsing)
-│   ├── auth.py              # Authentication blueprint
-│   ├── dashboard.py         # Dashboard blueprint (Search & Upload)
-│   ├── employee.py          # Employee blueprint
-│   ├── admin.py             # Admin blueprint
-│   ├── templates/           # HTML templates
-│   └── static/              # Static files
-├── uploads/                 # Uploaded files
-├── requirements.txt         # Python dependencies
-├── Procfile                # Render deployment config
-├── runtime.txt             # Python version
-├── render.yaml             # Render blueprint config
-├── run.py                  # Application entry point
-├── wsgi.py                 # WSGI entry point
-└── README.md               # This file
+├── index.html          # Frontend quotation interface
+├── index.js            # Express server with Gemini API
+├── package.json        # Dependencies and scripts
+├── vercel.json         # Vercel deployment config
+├── .env.example        # Environment variables template
+├── .gitignore          # Git ignore rules
+└── README.md           # This file
 ```
 
-## 🔧 Configuration
+## 🔍 Pricing Logic
 
-### Environment Variables
+### Tier A: Past Quotations
+- Searches indexed past quotations for customer + item match
+- Uses historical pricing with original discount
+- Best for repeat customers
 
-```env
-SECRET_KEY=your-secret-key-here
-DATABASE_URL=sqlite:///edudap.db  # or PostgreSQL URL for production
-FLASK_ENV=development
-UPLOAD_FOLDER=uploads
-MAX_UPLOAD_SIZE=10485760
-```
+### Tier B: Price List
+- Searches price list for item match
+- Applies customer-type-based discounts:
+  - University: 10% default
+  - Company: 5% default
+  - Govt/PSU: 5% default
 
-## 🛠️ Technologies
+### Tier C: Gemini Web Search
+- Uses Gemini 2.5 Flash with Google Search Grounding
+- Searches Indian vendors, marketplaces, distributors
+- Provides current market pricing with automatic citation extraction
+- Considers customer type for rate suggestions
+- Returns grounded URLs from search results
 
-- **Backend**: Flask 3.0
-- **Database**: SQLAlchemy (SQLite/PostgreSQL)
-- **Authentication**: Flask-Login
-- **Forms**: Flask-WTF
-- **File Parsing**: PyPDF2, pandas, openpyxl
-- **Frontend**: Bootstrap 5, Bootstrap Icons
-- **Deployment**: Gunicorn, Render
+## 🐛 Troubleshooting
 
-## 📊 Database
+### "Folder access requires Chrome/Edge and HTTPS or localhost"
+- Use Chrome or Edge browser
+- Access via `http://localhost:3000` (not `file://`)
+- For production, use HTTPS
 
-- **Development**: SQLite (automatic)
-- **Production**: PostgreSQL (recommended)
+### "Google API key is required"
+- Set `GOOGLE_API_KEY` in `.env` file
+- Or enter API key in the UI (Step 2)
+- Get API key from: https://makersuite.google.com/app/apikey
 
-Tables are created automatically on first run.
+### Gemini API fails
+- Check your API key is valid
+- Ensure you have available quota
+- Try with suggested URLs for better results
 
-## 🔒 Security
-
-- ✅ Password hashing with Werkzeug
-- ✅ Session management with Flask-Login
-- ✅ Role-based access control
-- ✅ Input validation with Flask-WTF
-- ✅ Environment-based configuration
-- ✅ Secure file uploads
+### Prices seem incorrect
+- Update your knowledge base with accurate data
+- Add relevant suggested URLs for Gemini
+- Verify customer type is set correctly
 
 ## 📝 License
 
-This project is proprietary software for EduDAP India Pvt Ltd.
+This project is proprietary and confidential to EduDAP.
 
-## 👥 Support
+## 👤 Contact
 
-For issues or questions:
-- Check [DEPLOYMENT.md](DEPLOYMENT.md) for deployment help
-- Review [IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md) for features
-- Create an issue in the repository
-
----
-
-**Version**: 1.0  
-**Last Updated**: January 2026
+**Praveen Tiwari**  
+Director, EduDAP  
+Email: Praveen@edudap.com  
+Phone: 9818315018

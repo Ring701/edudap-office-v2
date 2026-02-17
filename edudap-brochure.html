@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EduDAP Training Academy - Hands-On Training Programs</title>
+<style>
+@page {
+  size: A4;
+  margin: 0;
+}
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #333;
+  background: #fff;
+}
+.page {
+  width: 210mm;
+  height: 297mm;
+  padding: 12mm;
+  margin: 0 auto;
+  background: white;
+  page-break-after: always;
+  overflow: hidden;
+  position: relative;
+}
+.page:last-child {
+  page-break-after: avoid;
+}
+
+/* Color Theme */
+:root {
+  --deep-blue: #004085;
+  --scientific-green: #4E7D5B;
+  --light-blue: #E8F0FE;
+  --light-green: #E8F5E9;
+}
+
+/* Cover Page Styles */
+.cover-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.logo-section {
+  text-align: center;
+  padding: 20px 0 15px;
+}
+.logo-section img {
+  max-height: 80px;
+  max-width: 250px;
+}
+
+.main-header {
+  background: linear-gradient(135deg, var(--deep-blue) 0%, #0056b3 50%, var(--scientific-green) 100%);
+  color: white;
+  padding: 25px 20px;
+  text-align: center;
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+.main-title {
+  font-size: 24px;
+  font-weight: bold;
+  letter-spacing: 4px;
+  margin-bottom: 8px;
+}
+.main-subtitle {
+  font-size: 11px;
+  opacity: 0.9;
+  letter-spacing: 1px;
+}
+
+/* Training Programs Section */
+.programs-section {
+  background: var(--light-blue);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 15px;
+  border: 2px solid var(--deep-blue);
+}
+.programs-title {
+  text-align: center;
+  font-size: 16px;
+  font-weight: bold;
+  color: var(--deep-blue);
+  letter-spacing: 3px;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--scientific-green);
+}
+
+.programs-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.program-item {
+  display: flex;
+  align-items: center;
+  background: white;
+  border-radius: 10px;
+  padding: 15px 20px;
+  border-left: 5px solid var(--scientific-green);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+  transition: transform 0.2s;
+}
+.program-number {
+  font-size: 28px;
+  font-weight: bold;
+  color: var(--deep-blue);
+  min-width: 50px;
+}
+.program-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  flex: 1;
+}
+.program-icon {
+  font-size: 24px;
+  margin-left: 10px;
+}
+
+/* About Section */
+.about-section {
+  background: linear-gradient(to right, var(--light-green), white);
+  padding: 15px;
+  border-radius: 10px;
+  margin-bottom: 15px;
+  border-left: 4px solid var(--scientific-green);
+}
+.about-section h3 {
+  color: var(--scientific-green);
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+.about-section p {
+  font-size: 10px;
+  line-height: 1.5;
+  color: #444;
+}
+
+/* Features Grid */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 15px;
+}
+.feature-card {
+  background: white;
+  padding: 12px 10px;
+  border-radius: 8px;
+  text-align: center;
+  border: 2px solid var(--deep-blue);
+}
+.feature-icon {
+  font-size: 24px;
+  margin-bottom: 5px;
+}
+.feature-title {
+  font-size: 9px;
+  font-weight: bold;
+  color: var(--deep-blue);
+}
+
+/* Enroll Section */
+.enroll-section {
+  background: var(--deep-blue);
+  color: white;
+  padding: 15px;
+  border-radius: 10px;
+  margin-top: auto;
+}
+.enroll-section h3 {
+  font-size: 12px;
+  margin-bottom: 10px;
+  text-align: center;
+}
+.enroll-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.enroll-item {
+  font-size: 9px;
+  padding: 5px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 5px;
+  text-align: center;
+}
+
+/* Module Detail Pages */
+.module-header {
+  background: linear-gradient(135deg, var(--deep-blue) 0%, var(--scientific-green) 100%);
+  color: white;
+  padding: 12px 15px;
+  border-radius: 8px 8px 0 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.module-number {
+  font-size: 11px;
+  opacity: 0.8;
+}
+.module-title {
+  font-size: 15px;
+  font-weight: bold;
+}
+.module-subtitle {
+  font-size: 10px;
+  opacity: 0.9;
+  margin-top: 2px;
+}
+.module-duration {
+  text-align: right;
+}
+.module-duration .days {
+  font-size: 14px;
+  font-weight: bold;
+}
+.module-duration .label {
+  font-size: 9px;
+  opacity: 0.8;
+}
+
+.module-content {
+  border: 2px solid #e0e0e0;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  padding: 12px;
+}
+.curriculum {
+  margin-bottom: 12px;
+}
+.curriculum h4 {
+  color: var(--deep-blue);
+  font-size: 11px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #e0e0e0;
+  padding-bottom: 4px;
+}
+.curriculum-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 3px;
+}
+.curriculum-item {
+  display: flex;
+  align-items: flex-start;
+  font-size: 9px;
+}
+.curriculum-item .num {
+  min-width: 22px;
+  color: var(--scientific-green);
+  font-weight: bold;
+}
+.curriculum-item .text {
+  flex: 1;
+}
+
+.outcomes {
+  background: var(--light-green);
+  padding: 10px;
+  border-radius: 6px;
+  margin-top: 10px;
+}
+.outcomes h4 {
+  color: var(--scientific-green);
+  font-size: 10px;
+  margin-bottom: 6px;
+}
+.outcomes ul {
+  margin: 0;
+  padding-left: 15px;
+}
+.outcomes li {
+  font-size: 9px;
+  margin-bottom: 2px;
+  color: #333;
+}
+
+/* Fee Structure */
+.fee-section {
+  margin: 12px 0;
+}
+.fee-section h3 {
+  color: var(--deep-blue);
+  font-size: 12px;
+  margin-bottom: 8px;
+  text-align: center;
+}
+.fee-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 10px;
+}
+.fee-table th {
+  background: var(--deep-blue);
+  color: white;
+  padding: 8px;
+  text-align: left;
+  font-size: 10px;
+}
+.fee-table td {
+  padding: 8px;
+  border-bottom: 1px solid #e0e0e0;
+  font-size: 10px;
+}
+.fee-table tr:nth-child(even) {
+  background: #f8f9fa;
+}
+.scholarship {
+  background: #fff3cd;
+  padding: 8px;
+  border-radius: 6px;
+  font-size: 9px;
+  text-align: center;
+}
+
+/* Contact Section */
+.contact-section {
+  background: linear-gradient(135deg, var(--deep-blue) 0%, var(--scientific-green) 100%);
+  color: white;
+  padding: 15px;
+  border-radius: 10px;
+  text-align: center;
+  margin-top: 10px;
+}
+.contact-section h3 {
+  font-size: 14px;
+  margin-bottom: 10px;
+  letter-spacing: 2px;
+}
+.contact-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+  margin-top: 10px;
+  text-align: left;
+}
+.contact-item {
+  font-size: 9px;
+}
+.contact-item .label {
+  font-weight: bold;
+  opacity: 0.8;
+  margin-bottom: 2px;
+}
+.contact-item .value {
+  font-size: 10px;
+}
+.enroll-cta {
+  margin-top: 12px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+/* Infrastructure */
+.infrastructure {
+  margin: 10px 0;
+}
+.infrastructure h3 {
+  color: var(--deep-blue);
+  font-size: 11px;
+  margin-bottom: 8px;
+}
+.infra-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 5px;
+}
+.infra-item {
+  font-size: 9px;
+  padding: 6px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  border-left: 3px solid var(--scientific-green);
+}
+
+/* Services Section */
+.services-section {
+  margin: 10px 0;
+}
+.services-section h3 {
+  color: var(--deep-blue);
+  font-size: 11px;
+  margin-bottom: 8px;
+  text-align: center;
+}
+.services-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+.service-card {
+  background: #f8f9fa;
+  padding: 10px;
+  border-radius: 6px;
+  border-left: 3px solid var(--deep-blue);
+}
+.service-card h4 {
+  color: var(--deep-blue);
+  font-size: 10px;
+  margin-bottom: 4px;
+}
+.service-card p {
+  font-size: 8px;
+  color: #555;
+}
+
+/* Print Styles */
+@media print {
+  body {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  .page {
+    margin: 0;
+    box-shadow: none;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- PAGE 1: Cover -->
+<div class="page">
+  <div class="cover-page">
+    <!-- Logo Section -->
+    <div class="logo-section">
+      <img src="edudap_logo_white.png" alt="EduDAP Logo" style="max-height: 100px; max-width: 300px;">
+    </div>
+
+    <!-- Main Header -->
+    <div class="main-header">
+      <div class="main-title">HANDS-ON TRAINING PROGRAMS</div>
+      <div class="main-subtitle">Discover & Apply Practical Education</div>
+    </div>
+
+    <!-- Training Programs -->
+    <div class="programs-section">
+      <div class="programs-title">H A N D S - O N  T R A I N I N G  P R O G R A M S</div>
+      <div class="programs-grid">
+        <div class="program-item">
+          <div class="program-number">01</div>
+          <div class="program-name">Plant Tissue Culture & Micropropagation</div>
+          <div class="program-icon">🌱</div>
+        </div>
+        <div class="program-item">
+          <div class="program-number">02</div>
+          <div class="program-name">Molecular Biology & Genetic Engineering</div>
+          <div class="program-icon">🧬</div>
+        </div>
+        <div class="program-item">
+          <div class="program-number">03</div>
+          <div class="program-name">Cordyceps Cultivation</div>
+          <div class="program-icon">🍄</div>
+        </div>
+        <div class="program-item">
+          <div class="program-number">04</div>
+          <div class="program-name">Microbial Biotechnology</div>
+          <div class="program-icon">🔬</div>
+        </div>
+        <div class="program-item">
+          <div class="program-number">05</div>
+          <div class="program-name">Biochemical Analysis</div>
+          <div class="program-icon">⚗️</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- About Section -->
+    <div class="about-section">
+      <h3>About EduDAP Training Academy</h3>
+      <p><strong>EduDAP</strong> (Discover & Apply Practical Education) implements comprehensive practical industrial training and internship programs for students and researchers in Agricultural Sciences, Biotechnology, Biochemistry, Molecular Biology, Microbiology, Botany, Pharmacology, Para-medical Sciences, and Zoology at B.Sc./B.Tech./M.Sc./M.Tech./M.Phil./Ph.D. levels. Our objective is to provide industry-specific, hands-on training for skill development and enhancing job opportunities in applied biological sciences.</p>
+    </div>
+
+    <!-- Features -->
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">👨‍🏫</div>
+        <div class="feature-title">EXPERT FACULTY</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔬</div>
+        <div class="feature-title">MODERN LABS</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🧪</div>
+        <div class="feature-title">HANDS-ON LEARNING</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📝</div>
+        <div class="feature-title">PROJECT REPORTS</div>
+      </div>
+    </div>
+
+    <!-- Who Should Enroll -->
+    <div class="enroll-section">
+      <h3>Who Should Enroll?</h3>
+      <div class="enroll-grid">
+        <div class="enroll-item">B.Sc./B.Tech. Life Sciences</div>
+        <div class="enroll-item">M.Sc./M.Tech. Students</div>
+        <div class="enroll-item">Ph.D. Scholars</div>
+        <div class="enroll-item">B.Pharma/M.Pharma</div>
+        <div class="enroll-item">Agricultural Sciences</div>
+        <div class="enroll-item">Biotechnology Students</div>
+        <div class="enroll-item">Microbiology Students</div>
+        <div class="enroll-item">Biochemistry Students</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 2: Module 01 & 02 -->
+<div class="page">
+  <div class="module-header">
+    <div>
+      <div class="module-number">MODULE 01</div>
+      <div class="module-title">Plant Tissue Culture & Micropropagation</div>
+      <div class="module-subtitle">From Media Preparation to Commercial Tissue Culture Techniques</div>
+    </div>
+    <div class="module-duration">
+      <div class="days">15–30</div>
+      <div class="label">Days Hands-On Lab</div>
+    </div>
+  </div>
+  
+  <div class="module-content">
+    <p style="margin-bottom: 10px; font-size: 10px;">
+      A comprehensive hands-on module covering the complete spectrum of plant tissue culture — from basic media preparation to advanced commercial micropropagation. Students gain practical experience in aseptic culture, callus induction, organogenesis, somatic embryogenesis, and hardening of tissue-cultured plantlets.
+    </p>
+    
+    <div class="curriculum">
+      <h4>Detailed Curriculum</h4>
+      <div class="curriculum-list">
+        <div class="curriculum-item"><span class="num">01.</span><span class="text">Introduction to commercial plant tissue culture laboratory</span></div>
+        <div class="curriculum-item"><span class="num">02.</span><span class="text">Introduction to tools and techniques of plant tissue culture</span></div>
+        <div class="curriculum-item"><span class="num">03.</span><span class="text">Preparation of stock solutions of nutrient medium</span></div>
+        <div class="curriculum-item"><span class="num">04.</span><span class="text">Basic tissue culture media preparation</span></div>
+        <div class="curriculum-item"><span class="num">05.</span><span class="text">Selection, collection and surface sterilization of explants</span></div>
+        <div class="curriculum-item"><span class="num">06.</span><span class="text">Callus culture and maintenance</span></div>
+        <div class="curriculum-item"><span class="num">07.</span><span class="text">Micropropagation techniques</span></div>
+        <div class="curriculum-item"><span class="num">08.</span><span class="text">Meristem culture</span></div>
+        <div class="curriculum-item"><span class="num">09.</span><span class="text">Somatic embryogenesis</span></div>
+        <div class="curriculum-item"><span class="num">10.</span><span class="text">Organ culture</span></div>
+        <div class="curriculum-item"><span class="num">11.</span><span class="text">Protoplast culture</span></div>
+        <div class="curriculum-item"><span class="num">12.</span><span class="text">Suspension culture</span></div>
+        <div class="curriculum-item"><span class="num">13.</span><span class="text">Organogenesis</span></div>
+        <div class="curriculum-item"><span class="num">14.</span><span class="text">In vitro shoot regeneration and rooting</span></div>
+        <div class="curriculum-item"><span class="num">15.</span><span class="text">In vitro plantlet regeneration</span></div>
+        <div class="curriculum-item"><span class="num">16.</span><span class="text">Hardening and acclimatization of tissue cultured plantlets</span></div>
+        <div class="curriculum-item"><span class="num">17.</span><span class="text">Introduction to automated polyhouse / hardening unit</span></div>
+        <div class="curriculum-item"><span class="num">18.</span><span class="text">Techniques of commercial plant tissue culture</span></div>
+        <div class="curriculum-item"><span class="num">19.</span><span class="text">Project report preparation</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top: 15px;">
+    <div class="module-header">
+      <div>
+        <div class="module-number">MODULE 02</div>
+        <div class="module-title">Molecular Biology & Genetic Engineering</div>
+        <div class="module-subtitle">DNA Extraction to Gene Expression Profiling & DNA Fingerprinting</div>
+      </div>
+      <div class="module-duration">
+        <div class="days">15–30</div>
+        <div class="label">Days Hands-On Lab</div>
+      </div>
+    </div>
+    
+    <div class="module-content">
+      <p style="margin-bottom: 10px; font-size: 10px;">
+        Master the fundamental and advanced techniques of molecular biology and genetic engineering. This intensive module covers genomic DNA extraction, purification, quantification, PCR amplification, restriction digestion, gel electrophoresis, DNA fingerprinting, RNA extraction, and transcriptional profiling.
+      </p>
+      
+      <div class="curriculum">
+        <h4>Detailed Curriculum</h4>
+        <div class="curriculum-list">
+          <div class="curriculum-item"><span class="num">01.</span><span class="text">Introduction to tools and techniques of plant molecular biology</span></div>
+          <div class="curriculum-item"><span class="num">02.</span><span class="text">Genomic DNA extraction from leaves, bacteria and animal tissue</span></div>
+          <div class="curriculum-item"><span class="num">03.</span><span class="text">DNA purification techniques</span></div>
+          <div class="curriculum-item"><span class="num">04.</span><span class="text">Quantification of DNA using NanoDrop spectrophotometer</span></div>
+          <div class="curriculum-item"><span class="num">05.</span><span class="text">DNA quality analysis</span></div>
+          <div class="curriculum-item"><span class="num">06.</span><span class="text">Restriction digestion of DNA by endonucleases</span></div>
+          <div class="curriculum-item"><span class="num">07.</span><span class="text">Restriction mapping</span></div>
+          <div class="curriculum-item"><span class="num">08.</span><span class="text">DNA fingerprinting using Agarose Gel Electrophoresis</span></div>
+          <div class="curriculum-item"><span class="num">09.</span><span class="text">PCR amplification using molecular markers</span></div>
+          <div class="curriculum-item"><span class="num">10.</span><span class="text">DNA fingerprinting by RAPD</span></div>
+          <div class="curriculum-item"><span class="num">11.</span><span class="text">DNA fingerprinting by ISSR</span></div>
+          <div class="curriculum-item"><span class="num">12.</span><span class="text">AFLP and RFLP based DNA fingerprinting</span></div>
+          <div class="curriculum-item"><span class="num">13.</span><span class="text">PCR based advanced techniques</span></div>
+          <div class="curriculum-item"><span class="num">14.</span><span class="text">Amplified DNA analysis by Gel-Doc</span></div>
+          <div class="curriculum-item"><span class="num">15.</span><span class="text">Total RNA extraction</span></div>
+          <div class="curriculum-item"><span class="num">16.</span><span class="text">Targeted gene amplification</span></div>
+          <div class="curriculum-item"><span class="num">17.</span><span class="text">Transcriptional profiling and expression of genes by RT-PCR</span></div>
+          <div class="curriculum-item"><span class="num">18.</span><span class="text">Southern blotting</span></div>
+          <div class="curriculum-item"><span class="num">19.</span><span class="text">Project report preparation</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 3: Module 03 & 04 -->
+<div class="page">
+  <div class="module-header">
+    <div>
+      <div class="module-number">MODULE 03</div>
+      <div class="module-title">Cordyceps Militaris Cultivation Technique</div>
+      <div class="module-subtitle">Learn How to Grow the High-Value Medicinal Mushroom</div>
+    </div>
+    <div class="module-duration">
+      <div class="days">15–20</div>
+      <div class="label">Days Hands-On Lab</div>
+    </div>
+  </div>
+  
+  <div class="module-content">
+    <p style="margin-bottom: 10px; font-size: 10px;">
+      <strong>Cordyceps militaris</strong> (Keeda-Jadi or Yarshagumba) is a medicinal mushroom with anti-cancer, anti-inflammatory, antimicrobial, and immunomodulatory properties. This module teaches the complete cultivation technique from pure culture to harvesting and metabolite estimation.
+    </p>
+    
+    <div class="curriculum">
+      <h4>Detailed Curriculum</h4>
+      <div class="curriculum-list">
+        <div class="curriculum-item"><span class="num">01.</span><span class="text">Introduction to Cordyceps militaris — biology, medicinal properties & market potential</span></div>
+        <div class="curriculum-item"><span class="num">02.</span><span class="text">Potato Dextrose Agar (PDA) media preparation for pure culture</span></div>
+        <div class="curriculum-item"><span class="num">03.</span><span class="text">Liquid media preparation for spawn culture</span></div>
+        <div class="curriculum-item"><span class="num">04.</span><span class="text">Rice substrate media preparation for fruiting body regeneration</span></div>
+        <div class="curriculum-item"><span class="num">05.</span><span class="text">Sterilization, inoculation & incubation processes</span></div>
+        <div class="curriculum-item"><span class="num">06.</span><span class="text">Monitoring of photoperiodic management & laboratory environment control</span></div>
+        <div class="curriculum-item"><span class="num">07.</span><span class="text">Harvesting techniques & disease control</span></div>
+        <div class="curriculum-item"><span class="num">08.</span><span class="text">Spectrophotometric estimation of secondary metabolites</span></div>
+        <div class="curriculum-item"><span class="num">09.</span><span class="text">Project report preparation</span></div>
+      </div>
+    </div>
+
+    <div class="outcomes">
+      <h4>Key Learning Outcomes</h4>
+      <ul>
+        <li>Understand the complete life cycle and commercial value of Cordyceps militaris</li>
+        <li>Master aseptic techniques for pure culture and spawn preparation</li>
+        <li>Independently set up and manage a Cordyceps cultivation lab</li>
+        <li>Perform spectrophotometric analysis of bioactive secondary metabolites</li>
+      </ul>
+    </div>
+
+    <div style="background: #fff3cd; padding: 8px; border-radius: 6px; margin-top: 10px; font-size: 9px;">
+      <strong>Career Applications:</strong> Cordyceps militaris is a rapidly growing industry with high commercial value (₹1–5 lakh/kg dried product). Trained professionals can set up their own cultivation units or work in nutraceutical companies.
+    </div>
+  </div>
+
+  <div style="margin-top: 15px;">
+    <div class="module-header">
+      <div>
+        <div class="module-number">MODULE 04</div>
+        <div class="module-title">Microbial Biotechnology</div>
+        <div class="module-subtitle">Bacterial Genetics, Transformation & Agrobacterium-Mediated Techniques</div>
+      </div>
+      <div class="module-duration">
+        <div class="days">15–20</div>
+        <div class="label">Days Hands-On Lab</div>
+      </div>
+    </div>
+    
+    <div class="module-content">
+      <p style="margin-bottom: 10px; font-size: 10px;">
+        Explore microbial genetics and biotechnology through hands-on experiments covering bacterial growth dynamics, antibiotic sensitivity, plasmid and genomic DNA isolation, transformation techniques, and Agrobacterium-mediated gene transfer.
+      </p>
+      
+      <div class="curriculum">
+        <h4>Detailed Curriculum</h4>
+        <div class="curriculum-list">
+          <div class="curriculum-item"><span class="num">01.</span><span class="text">Bacterial growth curve analysis</span></div>
+          <div class="curriculum-item"><span class="num">02.</span><span class="text">Phage titration techniques</span></div>
+          <div class="curriculum-item"><span class="num">03.</span><span class="text">Bacterial antibiotic sensitivity analysis</span></div>
+          <div class="curriculum-item"><span class="num">04.</span><span class="text">Bacterial DNA isolation</span></div>
+          <div class="curriculum-item"><span class="num">05.</span><span class="text">Plasmid DNA isolation and purification</span></div>
+          <div class="curriculum-item"><span class="num">06.</span><span class="text">Bacterial transformation techniques</span></div>
+          <div class="curriculum-item"><span class="num">07.</span><span class="text">Agrobacterium culture techniques</span></div>
+          <div class="curriculum-item"><span class="num">08.</span><span class="text">Agrobacterium-mediated transformation</span></div>
+          <div class="curriculum-item"><span class="num">09.</span><span class="text">Genetic analysis of microbes by RFLP techniques</span></div>
+          <div class="curriculum-item"><span class="num">10.</span><span class="text">Project report preparation</span></div>
+        </div>
+      </div>
+
+      <div class="outcomes">
+        <h4>Key Learning Outcomes</h4>
+        <ul>
+          <li>Analyse bacterial growth kinetics and understand microbial physiology</li>
+          <li>Perform plasmid and genomic DNA isolation from bacterial cultures</li>
+          <li>Master bacterial transformation and Agrobacterium-mediated gene transfer</li>
+          <li>Apply microbial techniques in agriculture, industry, and environmental biotechnology</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 4: Module 05 + Fee + Contact -->
+<div class="page">
+  <div class="module-header">
+    <div>
+      <div class="module-number">MODULE 05</div>
+      <div class="module-title">Biochemical Analysis</div>
+      <div class="module-subtitle">Metabolite Estimation, Enzyme Kinetics & Chromatographic Techniques</div>
+    </div>
+    <div class="module-duration">
+      <div class="days">15–20</div>
+      <div class="label">Days Hands-On Lab</div>
+    </div>
+  </div>
+  
+  <div class="module-content">
+    <p style="margin-bottom: 10px; font-size: 10px;">
+      A comprehensive biochemistry module covering quantitative analysis of biomolecules, enzyme kinetics, antioxidant assays, spectrophotometric techniques, and chromatographic separation methods essential for any modern biology and pharmaceutical laboratory.
+    </p>
+    
+    <div class="curriculum">
+      <h4>Detailed Curriculum</h4>
+      <div class="curriculum-list">
+        <div class="curriculum-item"><span class="num">01.</span><span class="text">Secondary metabolites analysis</span></div>
+        <div class="curriculum-item"><span class="num">02.</span><span class="text">Antioxidant assay by DPPH method</span></div>
+        <div class="curriculum-item"><span class="num">03.</span><span class="text">Spectrophotometric analysis techniques</span></div>
+        <div class="curriculum-item"><span class="num">04.</span><span class="text">Enzyme activity assay</span></div>
+        <div class="curriculum-item"><span class="num">05.</span><span class="text">Isozyme separation techniques</span></div>
+        <div class="curriculum-item"><span class="num">06.</span><span class="text">Enzyme kinetics</span></div>
+        <div class="curriculum-item"><span class="num">07.</span><span class="text">Quantitative estimation of proteins, lipids, carbohydrates & amino acids</span></div>
+        <div class="curriculum-item"><span class="num">08.</span><span class="text">Chromatographic techniques</span></div>
+        <div class="curriculum-item"><span class="num">09.</span><span class="text">Project report preparation</span></div>
+      </div>
+    </div>
+
+    <div class="outcomes">
+      <h4>Key Learning Outcomes</h4>
+      <ul>
+        <li>Perform quantitative estimation of proteins, lipids, carbohydrates, and amino acids</li>
+        <li>Conduct antioxidant assays (DPPH) and secondary metabolite analysis</li>
+        <li>Understand enzyme kinetics, activity assays, and isozyme separation</li>
+        <li>Apply chromatographic techniques for compound separation and identification</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="fee-section">
+    <h3>Duration & Fee Structure</h3>
+    <table class="fee-table">
+      <tr>
+        <th>Program Type</th>
+        <th>Duration</th>
+        <th>Fee Range (INR)</th>
+      </tr>
+      <tr>
+        <td>Single Module Training</td>
+        <td>15 – 30 days</td>
+        <td>₹ 5,000 – ₹ 10,000</td>
+      </tr>
+      <tr>
+        <td>Multi-Module Training</td>
+        <td>30 – 60 days</td>
+        <td>Custom (based on modules)</td>
+      </tr>
+      <tr>
+        <td>Intensive Advanced Program</td>
+        <td>45 – 60 days</td>
+        <td>Custom (all modules)</td>
+      </tr>
+      <tr>
+        <td>Research Project / Dissertation</td>
+        <td>1 – 4 weeks</td>
+        <td>Based on duration</td>
+      </tr>
+    </table>
+    <div class="scholarship">
+      <strong>🎓 Merit Scholarship:</strong> EduDAP offers free training to first merit holders from any recognized educational institution.
+    </div>
+  </div>
+
+  <div class="services-section">
+    <h3>Research & Additional Services</h3>
+    <div class="services-grid">
+      <div class="service-card">
+        <h4>Projects, Dissertations & Thesis</h4>
+        <p>Supervised research for Ph.D., M.Phil., M.Sc., B.Pharma students.</p>
+      </div>
+      <div class="service-card">
+        <h4>Contractual R&D</h4>
+        <p>Collaborative research services for NGOs and institutions.</p>
+      </div>
+      <div class="service-card">
+        <h4>Facility Sharing</h4>
+        <p>Ph.D./M.Phil. scholars can conduct research using our lab.</p>
+      </div>
+      <div class="service-card">
+        <h4>Project Assistance</h4>
+        <p>Professional help in preparing thesis and research projects.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="infrastructure">
+    <h3>Infrastructure & Facilities</h3>
+    <div class="infra-grid">
+      <div class="infra-item">Fully equipped laboratories with high-class instruments</div>
+      <div class="infra-item">Centrally air-conditioned classrooms and laboratories</div>
+      <div class="infra-item">Audio-visual teaching aids for enhanced learning</div>
+      <div class="infra-item">Digital library with high-speed data access</div>
+      <div class="infra-item">Automated polyhouse and hardening unit</div>
+      <div class="infra-item">Advanced molecular biology lab with PCR, Gel-Doc, NanoDrop</div>
+    </div>
+  </div>
+
+  <div class="contact-section">
+    <h3>ENROLL TODAY • TRANSFORM YOUR CAREER</h3>
+    <div class="contact-grid">
+      <div class="contact-item">
+        <div class="label">ADDRESS</div>
+        <div class="value">WZ-10C, Asalatpur, Janakpuri<br>New Delhi – 110058</div>
+      </div>
+      <div class="contact-item">
+        <div class="label">PHONE</div>
+        <div class="value">+91 98183 15018<br>+91 95996 41214</div>
+      </div>
+      <div class="contact-item">
+        <div class="label">GSTIN / MSME</div>
+        <div class="value">07AAGFE4668N1ZV<br>UDYAM-DL-10-0020377</div>
+      </div>
+    </div>
+    <div class="enroll-cta">Enroll Now → +91 98183 15018</div>
+    <div style="margin-top: 8px; font-size: 8px; opacity: 0.8;">© 2026 EduDAP (Discover & Apply Practical Education) • All Rights Reserved</div>
+  </div>
+</div>
+
+</body>
+</html>

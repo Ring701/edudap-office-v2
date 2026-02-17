@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Quotation — Predefined Format + A/B/C Pricing</title>
+
+<!-- SheetJS (Excel parse/write) -->
+<script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
+<style>
+  :root{ --ink:#0f172a; --muted:#475569; --accent:#2563eb; --border:#cbd5e1; --bg:#f8fafc; --paper:#ffffff; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+  .wrap{max-width:1000px;margin:24px auto;padding:0 16px}
+  .panel{background:var(--paper);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px}
+  h2{margin:0 0 8px} h3{margin:0 0 6px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  label{font-weight:600;font-size:13px}
+  input,select,textarea{width:100%;padding:8px;border:1px solid var(--border);border-radius:8px}
+  textarea{min-height:60px}
+  .btn{display:inline-block;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:10px 14px;font-weight:700;cursor:pointer}
+  .btn.secondary{background:#0b1220;color:#fff;border:1px solid #0b1220}
+  .btn.ghost{background:#fff;color:var(--accent);border:1px solid var(--accent)}
+  .note{color:var(--muted);font-size:12px}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .stat{background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px;padding:8px 12px;font-size:12px}
+  .log{height:140px;overflow:auto;border:1px solid var(--border);border-radius:8px;padding:8px;background:#fff;font-family:ui-monospace,Menlo,Consolas,monospace}
+  .ok{color:#166534}.warn{color:#b45309}.err{color:#991b1b}
+
+  /* Document (unchanged format) */
+  .doc{background:var(--paper);border:1px solid var(--border);border-radius:12px;padding:24px}
+  .doc header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #000;padding-bottom:8px;margin-bottom:12px}
+  .title{font-size:20px;font-weight:800;letter-spacing:.2px}
+  .subhead{font-size:13px;color:#000}
+  .to{margin:8px 0 6px}
+  .salute{margin:6px 0 12px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{border:1px solid #000;padding:6px;vertical-align:top}
+  th{background:#e2e8f0;text-align:center}
+  tfoot td{font-weight:700}
+  .terms{margin-top:10px}
+  .terms ul{margin:6px 0 0;padding-left:18px}
+  .footer{margin-top:18px}
+
+  @media print{ .panel, .actions { display:none !important; } body { background:#fff; } .doc { border:none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- STEP 1: Knowledge Base -->
+  <div class="panel">
+    <h2>Step 1 — Select Knowledge Base Folder</h2>
+    <p class="note">Pick the folder with your <b>Price Lists</b> and <b>Past Quotations</b>. (Chrome/Edge + HTTPS/localhost required.)</p>
+    <div class="row">
+      <button id="btnFolder" class="btn secondary">📁 Select Folder</button>
+      <span class="stat">Price Lists: <b id="statPL">0</b></span>
+      <span class="stat">Past Quotations: <b id="statPQ">0</b></span>
+      <span class="stat">Indexed Items: <b id="statItems">0</b></span>
+      <span class="stat">Progress: <b id="progress">Idle</b></span>
+    </div>
+  </div>
+
+  <!-- STEP 2: Gemini -->
+  <div class="panel">
+    <h2>Step 2 — Gemini (Web Price Fallback)</h2>
+    <div class="grid">
+      <div>
+        <label for="apiUrl">Serverless Endpoint (recommended)</label>
+        <input id="apiUrl" placeholder="/api/gemini-price" value="/api/gemini-price">
+        <div class="note">Browser calls this URL; API key is used on the server.</div>
+      </div>
+      <div>
+        <label for="apiKey">Gemini API Key (optional)</label>
+        <input id="apiKey" type="password" placeholder="Paste Gemini API key (if you want to send it to your endpoint)">
+        <div class="note">Leave empty if your server has GOOGLE_API_KEY set.</div>
+      </div>
+    </div>
+    <div style="margin-top:8px">
+      <label for="suggested">Suggested URLs for Gemini to consult (comma‑separated)</label>
+      <textarea id="suggested" placeholder="https://vendor.com/spec, https://marketplace.in/page, https://manufacturer.com/datasheet.pdf"></textarea>
+      <div class="note">These URLs are passed to Gemini as preferred sources; Google Search Grounding still adds broader web context and returns citations.</div>
+    </div>
+  </div>
+
+  <!-- STEP 3: Quotation header -->
+  <div class="panel">
+    <h2>Step 3 — Quotation Header</h2>
+    <div class="grid">
+      <div>
+        <label for="qno">Quotation No (Ref. No.)</label>
+        <input id="qno" placeholder="QTN/EDP/2025-26/0155">
+      </div>
+      <div>
+        <label for="qdate">Date</label>
+        <input id="qdate" type="date">
+      </div>
+      <div>
+        <label for="toName">To (Recipient Name)</label>
+        <input id="toName" placeholder="Dr. Vanila Sharma">
+      </div>
+      <div>
+        <label for="univ">University / Organization</label>
+        <input id="univ" placeholder="Tropical Animal Genetics">
+      </div>
+      <div>
+        <label for="custType">Customer Type</label>
+        <select id="custType"><option>University</option><option>Company</option><option>Govt/PSU</option></select>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 4: Requirements -->
+  <div class="panel">
+    <h2>Step 4 — Upload Requirements Excel</h2>
+    <div class="row">
+      <input id="reqFile" type="file" accept=".xlsx,.xls">
+      <span class="note">Supported columns: Customer, Item, Quantity, Specification, Unit, Make, Cat no… (case‑insensitive)</span>
+    </div>
+  </div>
+
+  <!-- STEP 5: Generate -->
+  <div class="panel">
+    <h2>Step 5 — Generate</h2>
+    <div class="row">
+      <button id="btnGenerate" class="btn" disabled>⚡ Generate</button>
+      <button id="btnDebug" class="btn secondary">🔍 Debug</button>
+      <button id="btnPrint" class="btn ghost">🖨️ Print / Save PDF</button>
+    </div>
+    <div class="log" id="log" aria-live="polite" style="margin-top:8px"></div>
+  </div>
+
+  <!-- Document (unchanged format) -->
+  <div class="doc" id="doc">
+    <header>
+      <div>
+        <div class="title">Consumables</div>
+        <div class="subhead">Ref. No.: <span id="refNo">QTN/EDP/2025-26/XXXX</span></div>
+        <div class="subhead">Date: <span id="refDate">DD-MM-YYYY</span></div>
+      </div>
+      <div class="title">QUOTATION</div>
+    </header>
+
+    <div class="to">
+      <strong>To,</strong><br>
+      <span id="toBlock">Dr. ____________<br>Head, R & D<br><span id="orgName">________________________</span></span>
+    </div>
+
+    <div class="salute">
+      Respected Madam/Sir,<br>
+      We are glad to submit our quotation. Details of the same are as follows:
+    </div>
+
+    <table aria-label="Items">
+      <thead>
+        <tr>
+          <th style="width:48px">S.No</th>
+          <th>Items</th>
+          <th style="width:80px">Unit</th>
+          <th style="width:60px">Qty</th>
+          <th style="width:90px">Make</th>
+          <th style="width:110px">Cat no</th>
+          <th style="width:90px">Rate</th>
+          <th style="width:60px">Dis.</th>
+          <th style="width:100px">Amount</th>
+          <th style="width:70px">GST</th>
+          <th style="width:110px">Total</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+      <tfoot>
+        <tr>
+          <td colspan="10" style="text-align:right">Total With Tax</td>
+          <td id="grandTotal">0</td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <div id="citations" style="margin-top:6px;font-size:12px;color:#334155"></div>
+
+    <div class="terms">
+      <strong>Terms and Conditions of Sale:</strong>
+      <ul>
+        <li>Delivery within 30 Days from the date of receiving Purchase Order.</li>
+        <li>Delivery to your institute FREE OF COST.</li>
+        <li>50% Advance Payment.</li>
+        <li>Total is Inclusive of all Taxes.</li>
+        <li>Packaging & forwarding will be borne by EduDAP.</li>
+        <li>Quotation Valid till 60 Days.</li>
+      </ul>
+    </div>
+
+    <div class="footer">
+      Looking forward for your valuable order and assuring BEST OF OUR SERVICES.<br><br>
+      Thank You!<br><br>
+      <strong>Yours Sincerely,</strong><br>
+      <strong>Praveen Tiwari</strong><br>
+      Director<br>
+      <span>Praveen@edudap.com</span><br>
+      <span>9818315018</span>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===== Helpers ===== */
+const $ = id => document.getElementById(id);
+const logEl = $('log'), progressEl = $('progress');
+const statPL = $('statPL'), statPQ = $('statPQ'), statItems = $('statItems');
+const rowsEl = $('rows'), grandTotalEl = $('grandTotal'), citesEl = $('citations');
+const N = s => (s || '').toString().trim().toLowerCase();
+function log(s, cls=''){ const t=new Date().toLocaleTimeString(); const div=document.createElement('div'); div.className=cls; div.textContent=`[${t}] ${s}`; logEl.appendChild(div); logEl.scrollTop=logEl.scrollHeight; }
+function rupee(n){ return new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',maximumFractionDigits:2}).format(n||0); }
+function ddmmyyyy(d){ const dd=String(d.getDate()).padStart(2,'0'), mm=String(d.getMonth()+1).padStart(2,'0'), yy=d.getFullYear(); return `${dd}-${mm}-${yy}`; }
+
+/* ===== State ===== */
+let KB = { history:{}, pricelist:{}, counts:{pl:0,pq:0,items:0}, loaded:false };
+let requirements = [];
+let C_citations = [];
+
+/* ===== Init ===== */
+(function init(){
+  const today = new Date();
+  $('qdate').value = new Date().toISOString().slice(0,10);
+  $('refDate').textContent = ddmmyyyy(today);
+  $('btnPrint').onclick = () => window.print();
+
+  $('btnFolder').onclick = handleFolder;
+  $('reqFile').addEventListener('change', handleReqUpload);
+  $('btnGenerate').onclick = generateQuote;
+  $('btnDebug').onclick = showDebugInfo;
+  refreshGenerateButton();
+})();
+
+function showDebugInfo(){
+  log('=== DEBUG INFO ===');
+  log(`Requirements loaded: ${requirements.length} rows`);
+  if (requirements.length > 0) {
+    const sample = requirements[0];
+    log(`Sample requirement row:`);
+    log(JSON.stringify(sample, null, 2));
+  }
+  log(`Price Lists found: ${KB.counts.pl}`);
+  log(`Past Quotations found: ${KB.counts.pq}`);
+  log(`Total items indexed: ${KB.counts.items}`);
+  const plKeys = Object.keys(KB.pricelist).slice(0, 10);
+  log(`First 10 items in KB:`);
+  plKeys.forEach(k => log(`  - ${k} -> ${KB.pricelist[k].length} variants`));
+  if (plKeys.length > 0) {
+    const sample = KB.pricelist[plKeys[0]][0];
+    log(`Sample price list entry:`);
+    log(JSON.stringify(sample, null, 2));
+  }
+}
+
+function refreshGenerateButton(){
+  const can = KB.loaded && requirements.length > 0;
+  $('btnGenerate').disabled = !can;
+}
+
+/* ===== Utility Functions ===== */
+function norm(s){
+  return String(s||'').toLowerCase().replace(/[^a-z0-9\-\.\s]/g,' ').replace(/\s+/g,' ').trim();
+}
+
+function brandFromFilename(fn){
+  const t=fn.toLowerCase();
+  if (t.includes('cdh')) return 'CDH';
+  if (t.includes('bb')||t.includes('biotek brew')||t.includes('bbc')) return 'BBChem';
+  if (t.includes('merck')||t.includes('sigma')) return 'Merck';
+  return '';
+}
+
+const DROP_TOKENS = new Set(['ar','lr','cp','gr','analytical','reagent','extra','pure','pellets','powder','flakes','granular','solution','anhydrous','monohydrate','dihydrate','trihydrate','hydrate','acs','min','assay','technical','lab']);
+const REPLACERS = [ [/sulphate/g,'sulfate'], [/sulphide/g,'sulfide'], [/aluminium/g,'aluminum'], [/–|—/g,'-'], [/[^a-z0-9.\-\s]/g,' '] ];
+function normalizeChemName(s){ let t=String(s||'').toLowerCase(); for (const [re,sub] of REPLACERS) t=t.replace(re,sub); return t.split(/[\s/(),]+/).filter(tok=>tok && !DROP_TOKENS.has(tok)).join(' '); }
+function tokenSet(s){ return new Set(normalizeChemName(s).split(/\s+/).filter(Boolean)); }
+function jaccard(aSet,bSet){ if (!aSet.size||!bSet.size) return 0; let inter=0; for (const t of aSet) if (bSet.has(t)) inter++; return inter/(aSet.size + bSet.size - inter); }
+
+let _priceIndex=null;
+function buildPriceIndex(){ _priceIndex=[]; for (const [key, arr] of Object.entries(KB.pricelist)){ _priceIndex.push({ key, set: tokenSet(key), arr }); } }
+
+function findCandidatesForItem(name){ 
+  if (!_priceIndex) buildPriceIndex(); 
+  const qset = tokenSet(name); 
+  let bestScore=0, out=[]; 
+  for (const e of _priceIndex){ 
+    const s=jaccard(qset,e.set); 
+    if (s>0.45){ 
+      out.push(...e.arr.map(r=>({...r,__key:e.key,__score:s}))); 
+      if (s>bestScore) bestScore=s; 
+    } 
+  }
+  return out.sort((a,b)=>b.__score-a.__score).slice(0,30);
+}
+
+const vendorPriority = ['CDH','QUALIGENS','BBCHEM'];
+function rankByBrand(rows, brandPref=[]){ 
+  const want = brandPref.length? brandPref : vendorPriority; 
+  return rows.sort((a,b)=>{ 
+    const ai = want.findIndex(w => (a.make||'').toUpperCase().includes(w)); 
+    const bi = want.findIndex(w => (b.make||'').toUpperCase().includes(w)); 
+    return (ai<0)-(bi<0) || (ai-bi) || ((b.__score||0)-(a.__score||0)); 
+  }); 
+}
+
+function parsePackFromText(s){ 
+  const t=String(s||'').toLowerCase(); 
+  let m=t.match(/(\d+)\s*x\s*(\d+(?:\.\d+)?)\s*(g|gm|gms|kg)/); 
+  if(!m) m=t.match(/(\d+(?:\.\d+)?)\s*(g|gm|gms|kg)/); 
+  if(m){ 
+    const qty=m[2]?parseFloat(m[2]):parseFloat(m[1]); 
+    const u=(m[3]||m[2]||'gm').toLowerCase(); 
+    return {kind:'mass', value: u.includes('kg')? qty*1000: qty}; 
+  }
+  m=t.match(/(\d+)\s*x\s*(\d+(?:\.\d+)?)\s*(ml|l|ltr)/); 
+  if(!m) m=t.match(/(\d+(?:\.\d+)?)\s*(ml|l|ltr)/); 
+  if(m){ 
+    const qty=m[2]?parseFloat(m[2]):parseFloat(m[1]); 
+    const u=(m[3]||m[2]||'ml').toLowerCase(); 
+    return {kind:'vol', value: u.startsWith('l')? qty*1000: qty}; 
+  }
+  return null; 
+}
+
+function parsePackFromUnit(unit){ 
+  const t=String(unit||'').toLowerCase(); 
+  let m=t.match(/(\d+(?:\.\d+)?)\s*(g|gm|gms|kg)/); 
+  if(m) return {kind:'mass', value: m[2].toLowerCase()==='kg'? parseFloat(m[1])*1000: parseFloat(m[1])}; 
+  m=t.match(/(\d+(?:\.\d+)?)\s*(ml|l|ltr)/); 
+  if(m) return {kind:'vol', value: m[2].toLowerCase().startsWith('l')? parseFloat(m[1])*1000: parseFloat(m[1])}; 
+  return null; 
+}
+
+function chooseByPack(rows, reqPack){ 
+  if (!reqPack||!rows?.length) return rows[0]; 
+  let best=rows[0], bestDelta=Infinity; 
+  for (const r of rows){ 
+    const p=parsePackFromUnit(r.unit); 
+    if (!p||p.kind!==reqPack.kind) continue; 
+    const d=Math.abs((p.value||0)-(reqPack.value||0)); 
+    if (d<bestDelta){ best=r; bestDelta=d; } 
+  } 
+  return best; 
+}
+
+/* ===== STEP 1: Folder selection + Indexing ===== */
+async function handleFolder(){
+  try{
+    log('Requesting folder access...');
+    progressEl.textContent = 'Waiting for permission...';
+    if (!('showDirectoryPicker' in window)){
+      log('Folder access requires Chrome/Edge and HTTPS or localhost.','warn');
+      progressEl.textContent = 'Idle';
+      return;
+    }
+    const dir = await window.showDirectoryPicker();
+    KB = { history:{}, pricelist:{}, counts:{pl:0,pq:0,items:0}, loaded:false };
+
+    progressEl.textContent = 'Scanning folder...';
+    for await (const entry of dir.values()){
+      if (entry.kind!=='file') continue;
+      const name = entry.name.toLowerCase();
+      if (!name.endsWith('.xlsx') && !name.endsWith('.xls')) continue;
+      const file = await entry.getFile();
+      await indexExcelFile(file, name);
+    }
+    statPL.textContent = KB.counts.pl;
+    statPQ.textContent = KB.counts.pq;
+    statItems.textContent = KB.counts.items;
+    KB.loaded = true;
+    progressEl.textContent = 'Knowledge base ready';
+    log('Folder indexed successfully.','ok');
+    refreshGenerateButton();
+  }catch(e){
+    log('Folder selection cancelled or failed. Make sure to click "Allow".','warn');
+    progressEl.textContent = 'Idle';
+  }
+}
+
+async function indexExcelFile(file, filename){
+  const buf = await file.arrayBuffer();
+  const wb = XLSX.read(buf, { type:'array' });
+  for (const sn of wb.SheetNames){
+    let rows = [];
+    let headerRow = 0;
+    
+    // Try to find the actual header row (skip title rows)
+    for (; headerRow < 10; headerRow++) {
+      const tempRows = XLSX.utils.sheet_to_json(wb.Sheets[sn], { range: headerRow, defval:'' });
+      if (tempRows.length === 0) continue;
+      
+      const cols = Object.keys(tempRows[0]);
+      
+      // Skip if first column looks like a company title or category name
+      const firstCol = cols[0] || '';
+      if (firstCol.length > 50 || firstCol.includes('Price List') || firstCol.includes('PRICELIST') || 
+          firstCol.includes('2025') || firstCol.includes('2024') || 
+          firstCol.toLowerCase().includes('effective') ||
+          cols.every(c => c.startsWith('__EMPTY'))) {
+        continue; // Skip this row, it's a title
+      }
+      
+      // Check if this looks like actual data (has expected columns)
+      const hasCommonCols = cols.some(c => 
+        c.toLowerCase().includes('item') || c.toLowerCase().includes('product') || 
+        c.toLowerCase().includes('price') || c.toLowerCase().includes('rate') ||
+        c.toLowerCase().includes('name') || c.toLowerCase().includes('description') ||
+        c.toLowerCase().includes('code') || c.toLowerCase().includes('unit') ||
+        c.toLowerCase().includes('cas')
+      );
+      
+      const hasNonEmptyCols = cols.some(c => !c.startsWith('__EMPTY'));
+      
+      if (hasCommonCols || hasNonEmptyCols) {
+        rows = tempRows;
+        break;
+      }
+    }
+    
+    if (!rows.length) continue;
+    
+    // Show columns found
+    const columns = Object.keys(rows[0] || {});
+    log(`File: ${file.name} - Sheet: ${sn} - Found ${columns.length} columns (header row: ${headerRow}):`, 'ok');
+    columns.forEach(col => log(`  → "${col}"`, 'ok'));
+
+    const cols = Object.keys(rows[0]).map(c => c.trim().toLowerCase());
+    const looksPL = filename.includes('price') || filename.includes('rate') || filename.includes('pricelist') ||
+                    cols.some(c => c.includes('price') || c.includes('mrp') || c.includes('rate') || c.includes('rate price') || c.includes('price/pk'));
+    const looksPQ = filename.includes('quote') || filename.includes('quotation') || filename.includes('customer') ||
+                    cols.some(c => c.includes('customer'));
+
+    if (looksPQ){
+      rows.forEach(r=>{
+        const cust = N(r.Customer || r['Customer Name'] || r.University || r.Organization || r.Client);
+        const item = N(r.Item || r.Product || r.Description || r.Name);
+        const price = Number(r.Price || r.Rate || r.Amount || r['Unit Price']);
+        const discount = Number(r.Discount || r.Disc || 0);
+        if (!cust || !item || !price) return;
+        KB.history[cust] = KB.history[cust] || {};
+        KB.history[cust][item] = { price, discount };
+        KB.counts.items++;
+      });
+      KB.counts.pq++;
+    } 
+    else if (looksPL){
+      rows.forEach(r=>{
+        // Try all possible column names for item
+        const item = N(
+          r['ITEM DESCRIPTION']||r['Item Description']||r['Item Description ']||r['Product Name']||
+          r['Product']||r['Product Name']||r['Name of Chemicals']||r['Chemical']||
+          r['Chemical Name']||r['ITEM']||r['Item']||r['Item Name']||
+          r['Name']||r['Description']||r['Product Description']||
+          r['Material']||r['Substance']||r['PRODUCT NAME']||
+          r[' Description']||r['Description ']||r['ReadyMED Media Bases']||
+          r['PNAME']||r['DEHYDRATED CULTURE MEDIA']||
+          r['Analytical Reagent & Standard Solutions']||r['Staining and Indicator Solutions & Readymade Staining Kits']||
+          r['Name of Categories']||''
+        );
+        
+        // Try all possible column names for unit
+        const unit = N(
+          r['ITEM UNIT']||r['Item Unit']||r['Unit']||r['Packing']||
+          r['Pack']||r['Pack Size']||r['Package']||r['Packaging']||
+          r['Pack Size']||r['Unit Size']||r['Size']||r['Quantity']||
+          r['Qty']||r['Qty/Pk']||''
+        );
+        
+        // Try all possible column names for rate
+        const rate = N(
+          r['RATE PRICE']||r['Rate Price']||r['Rate']||r['Rate ']||
+          r['Price']||r['MRP']||r['Mrp']||r['RATE']||
+          r['Rate INR']||r['Price INR']||r['Unit Price']||
+          r['Cost']||r['Amount']||r['Value']||
+          r['List Price']||r['Selling Price']||
+          r[' PRICE']||r['Price ']||r['Price 2025-26']||
+          r['Price/Pk 24-25']||r['10 L MRP in INR']||
+          r['25 L price']||r['10 L price']||
+          r['100 g price']||r['500 g Price']||
+          r['RATE']||''
+        );
+        
+        // Try all possible column names for catalog number
+        const cat  = N(
+          r['CAT NO']||r['CAT NO.']||r['Cat No']||r['CatNo']||
+          r['Cat No.']||r['Catalogue No']||r['Catalog No']||
+          r['Product Code']||r['Code']||r['SKU']||
+          r['Item Code']||r['Part Number']||
+          r['Cat#']||r['PRODUCT CODE']||r['PCODE']||
+          r['CAS NO.']||r['CAS NO']||''
+        );
+        
+        // Try all possible column names for make/brand
+        const make = N(
+          r['Make']||r['Brand']||r['Manufacturer']||r['Company']||
+          r['Supplier']||r['Vendor']||r['Make / Brand ']||
+          r['Make / Brand']||''
+        ) || brandFromFilename(filename);
+        
+        const desc = N(r['Description']||r['Item Description']||r['ITEM DESCRIPTION']||r['Spec']||r['Specification']||'');
+        const grade = (String(desc).match(/\b(ar|ep|hplc|mb|molecular|acs|lr|cp)\b/i)||[''])[0];
+        
+        if (!item||!rate) return;
+        const key = norm(item);
+        KB.pricelist[key] = KB.pricelist[key] || [];
+        KB.pricelist[key].push({ make, catno:cat, unit, grade, mrp:Number(rate) });
+        KB.counts.items++;
+      });
+      KB.counts.pl++;
+    }
+  }
+}
+
+/* ===== STEP 4: Requirements upload ===== */
+async function handleReqUpload(e){
+  try{
+    const f = e.target.files?.[0]; if(!f){ requirements=[]; refreshGenerateButton(); return; }
+    const wb = XLSX.read(await f.arrayBuffer(), { type:'array' });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    
+    // Try to find the actual header row (skip title rows like institute name, file name, etc)
+    let data = [];
+    let headerRow = 0;
+    
+    for (; headerRow < 10; headerRow++) {
+      const tempData = XLSX.utils.sheet_to_json(sheet, { range: headerRow, defval:'' });
+      if (tempData.length === 0) continue;
+      
+      const cols = Object.keys(tempData[0]);
+      
+      // Skip if first column looks like a title (institute name, file name, etc)
+      const firstCol = cols[0] || '';
+      if (firstCol.length > 30 || firstCol.includes('COLLEGE') || firstCol.includes('UNIVERSITY') || 
+          firstCol.includes('PHARMA') || firstCol.includes('BLOCK') ||
+          cols.every(c => c.startsWith('__EMPTY'))) {
+        log(`Skipping title row ${headerRow}: "${firstCol}"`, 'ok');
+        continue;
+      }
+      
+      // Check if this looks like actual data (has expected column patterns)
+      const hasCommonCols = cols.some(c => 
+        c.toLowerCase().includes('chemical') || c.toLowerCase().includes('item') || c.toLowerCase().includes('product') || 
+        c.toLowerCase().includes('name') && !c.toLowerCase().includes('customer') ||
+        c.toLowerCase().includes('description') || c.toLowerCase().includes('sno') ||
+        c.toLowerCase().includes('qty') || c.toLowerCase().includes('quantity')
+      );
+      
+      if (hasCommonCols) {
+        data = tempData;
+        log(`Found headers at row ${headerRow}`, 'ok');
+        break;
+      }
+    }
+    
+    if (data.length === 0) {
+      log('Could not find valid headers. Using first row.', 'warn');
+      data = XLSX.utils.sheet_to_json(sheet, { defval:'' });
+    }
+    
+    log(`Total rows in requirements file: ${data.length}`, 'ok');
+    
+    // Try to find which column has the item names
+    if (data.length > 0) {
+      const sample = data[0];
+      log(`Sample row keys: ${Object.keys(sample).slice(0, 15).join(', ')}`, 'ok');
+    }
+    
+    // First, detect which column has the item names
+    const sampleKeys = data.length > 0 ? Object.keys(data[0]) : [];
+    log(`Available columns in requirements: ${sampleKeys.join(', ')}`, 'ok');
+    
+    requirements = data.map((r, idx) => {
+      // Try multiple variations for each field
+      const getItem = () => {
+        for (const key of sampleKeys) {
+          const k = key.toLowerCase();
+          if (k.includes('chemical') || k.includes('name') && !k.includes('customer') && !k.includes('institute') || 
+              k.includes('description') || k.includes('product') || k.includes('item')) {
+            const val = r[key];
+            if (val && String(val).trim()) return String(val).trim();
+          }
+        }
+        return '';
+      };
+      
+      const getQty = () => {
+        for (const key of sampleKeys) {
+          const k = key.toLowerCase();
+          if (k.includes('qty') || k.includes('quantity')) {
+            const val = Number(r[key]);
+            if (!isNaN(val) && val > 0) return val;
+          }
+        }
+        return 1;
+      };
+      
+      return {
+        customer: r.Customer || r['Customer Name'] || r.University || r.Organization || r.Client || r['Name of Institute'] || r['Institute Name'] || '',
+        type: r.Type || r['Customer Type'] || r['Customer Type '] || '',
+        contact: r.Contact || r.Email || r.Phone || '',
+        item: getItem(),
+        spec: r.Specification || r.Spec || r['Specifications'] || r.Details || '',
+        qty: getQty(),
+        unit: r.Unit || r['Unit '] || r['Pack'] || r['Packing'] || r['Pack Size'] || '',
+        make: r.Make || r['Make '] || r['Brand'] || r['Manufacturer'] || '',
+        catno: r['Cat no'] || r['Cat No'] || r['Cat no.'] || r['Catalog No'] || r['CatNo'] || 
+               r['Product Code'] || r['Code'] || r['SKU'] || r['Item Code'] || ''
+      };
+    });
+    
+    // Count non-empty items
+    const itemCount = requirements.filter(r => r.item && r.item.trim()).length;
+    log(`Requirements loaded: ${requirements.length} rows, ${itemCount} with item names.`,'ok');
+    refreshGenerateButton();
+  }catch(err){
+    log('Failed to parse requirements file: ' + err.message,'err');
+  }
+}
+
+/* ===== Pricing (A/B/C) ===== */
+function priceFromHistory(customer, item){
+  return KB.history[N(customer)]?.[N(item)] || null;
+}
+
+function priceFromList(item, customerType){
+  const candidates = findCandidatesForItem(item);
+  if (!candidates.length) return null;
+  
+  const defaultDisc = ((customerType||'').toLowerCase()==='university' ? 10 : 5);
+  const vendorPriority = ['CDH','QUALIGENS','BBCHEM'];
+  const ordered = candidates.sort((a,b)=>{ 
+    const ai = vendorPriority.findIndex(w => (a.make||'').toUpperCase().includes(w)); 
+    const bi = vendorPriority.findIndex(w => (b.make||'').toUpperCase().includes(w)); 
+    return (ai<0)-(bi<0) || (ai-bi) || ((b.__score||0)-(a.__score||0)); 
+  });
+  const chosen = chooseByPack(ordered, null);
+  
+  if (!chosen) return null;
+  
+  const rate = Math.round(chosen.mrp * (1 - defaultDisc/100));
+  return { rate, discount: defaultDisc, mrp: chosen.mrp, make: chosen.make, catno: chosen.catno, unitStr: chosen.unit };
+}
+
+let geminiFailStreak = 0;
+async function priceFromGemini({item, spec, qty, customerType}){
+  const url = $('apiUrl').value || '/api/gemini-price';
+  const apiKey = $('apiKey').value || undefined;
+  const suggested = $('suggested').value.split(',').map(s=>s.trim()).filter(Boolean);
+  
+  if (geminiFailStreak >= 3) {
+    log('Gemini disabled: repeated failures. Skipping web estimates.','warn');
+    return null;
+  }
+  
+  try {
+    const res = await fetch(url, {
+      method:'POST', headers:{'content-type':'application/json'},
+      body: JSON.stringify({ item, spec, qty, customerType, suggestedUrls: suggested, apiKey })
+    });
+    if (!res.ok) {
+      geminiFailStreak++;
+      throw new Error('HTTP '+res.status);
+    }
+    const json = await res.json();
+    geminiFailStreak = 0;
+    if (Array.isArray(json.citations)) C_citations.push(...json.citations);
+    return json;
+  } catch(e) {
+    log(`Gemini web estimate failed (${item}): ${e.message||e}`,'warn');
+    return null;
+  }
+}
+
+/* ===== STEP 5: Generate (fills your template) ===== */
+async function generateQuote(){
+  if (!KB.loaded){ log('Please complete Step 1: Select Folder first.','warn'); return; }
+  if (!requirements.length){ log('Please complete Step 4: Upload Requirements.','warn'); return; }
+
+  try{
+    rowsEl.innerHTML=''; grandTotalEl.textContent='0'; C_citations = [];
+    progressEl.textContent = 'Generating…';
+
+    // Header
+    const d = $('qdate').value ? new Date($('qdate').value) : new Date();
+    $('refDate').textContent = ddmmyyyy(d);
+    $('refNo').textContent = $('qno').value.trim() || 'QTN/EDP/2025-26/XXXX';
+    $('toBlock').innerHTML = `${($('toName').value||'Dr. ____________')}<br>Head, R & D<br><span id="orgName">${($('univ').value||'________________________')}</span>`;
+
+    const custTypeUI = $('custType').value;
+    let rowNo = 0, gTotal = 0;
+
+    log('Applying A (Past Quotations) → B (Price List) → C (Gemini web)…');
+
+    for (const r of requirements){
+      if (!r.item) continue;
+      rowNo++;
+      const qty = r.qty || 1;
+
+      // A — Past quotations
+      const A = priceFromHistory(r.customer || $('univ').value, r.item);
+      if (A){
+        const rate = A.price, dis = A.discount || 0;
+        const amount = Math.round(rate * (1 - dis/100)) * qty;
+        const gst = 18, total = Math.round(amount * (1 + gst/100));
+        addRow(rowNo, r, rate, dis, amount, gst, total, 'A', '', '', '');
+        gTotal += total; continue;
+      }
+
+      // B — Price list
+      const B = priceFromList(r.item, r.type || custTypeUI);
+      if (B){
+        const rate = B.mrp, dis = B.discount || 0;
+        const amount = Math.round(rate * (1 - dis/100)) * qty;
+        const gst = 18, total = Math.round(amount * (1 + gst/100));
+        addRow(rowNo, r, rate, dis, amount, gst, total, 'B', B.make || '', B.catno || '', B.unitStr || '');
+        gTotal += total; continue;
+      }
+
+      // C — Gemini web (grounded)
+      log(`Estimating from web (Gemini): ${r.item}`,'warn');
+      const C = await priceFromGemini({ item:r.item, spec:r.spec, qty, customerType:r.type || custTypeUI });
+      if (C && C.unit){
+        const rate = C.unit || 0, dis = 0;
+        const amount = Math.round(rate) * qty;
+        const gst = 18, total = Math.round(amount * (1 + gst/100));
+        addRow(rowNo, r, rate, dis, amount, gst, total, 'C', 'Gemini/Web', C.catno || '', C.currency || 'INR');
+        gTotal += total;
+      } else {
+        log(`No pricing found for: ${r.item}`,'err');
+        addRow(rowNo, r, 0, 0, 0, 0, 0, '-', 'Not Found', '-', '-');
+      }
+    }
+
+    grandTotalEl.textContent = rupee(gTotal);
+    showCitations();
+    progressEl.textContent = 'Done';
+    log('Quotation populated. You can print or export.','ok');
+
+  }catch(err){
+    console.error(err);
+    log('Generation failed. See console.','err');
+    progressEl.textContent = 'Idle';
+  }
+}
+
+function addRow(n, r, rate, dis, amount, gst, total, source, make, catno, unit){
+  const tr = document.createElement('tr');
+  [ n,
+    r.item + (source ? ` [${source}]` : ''),
+    unit || r.unit || '',
+    r.qty || 1,
+    make || r.make || '',
+    catno || r.catno || '',
+    rupee(rate),
+    (dis||0)+'%',
+    rupee(amount),
+    (gst||0)+'%',
+    rupee(total)
+  ].forEach(v=>{
+    const td=document.createElement('td'); td.innerHTML = v; tr.appendChild(td);
+  });
+  rowsEl.appendChild(tr);
+}
+
+function showCitations(){
+  const uniq = [...new Set(C_citations)].slice(0,10);
+  if (!uniq.length){ citesEl.textContent=''; return; }
+  citesEl.innerHTML = '<strong>Sources (for C‑tier items):</strong> ' +
+    uniq.map(u=>`<a href="${u}" target="_blank">${u}</a>`).join(' · ');
+}
+</script>
+</body>
+</html>
